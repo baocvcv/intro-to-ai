@@ -1,0 +1,63 @@
+import argparse
+from src.ngram import NGramModel
+
+parser = argparse.ArgumentParser(description='Pinyin input with N-gram.')
+parser.add_argument('-f', '--fenci', dest='fenci', action='store_true',
+                    help='N-gram on single character or phrase')
+parser.add_argument('-i', '--input', dest='input', type=argparse.FileType('r'),
+                    metavar='FILE', help='Path to input pinyin file')
+parser.add_argument('-o', '--output', dest='output', type=argparse.FileType('w'),
+                    metavar='FILE', help='Path to output file')
+parser.add_argument('-t', '--truth', dest='truth', type=argparse.FileType('r'),
+                    metavar='FILE', help='Path to ground truth file')
+parser.add_argument('-n', dest='n', default=2, type=int,
+                    metavar='NGRAM', help='Default as 2')
+parser.add_argument('task', type=str, choices=['train', 'translate', 'test', 'console'],
+                    help='Train, translate only, test accuracy, or use console mode')
+
+def check_result(output: list, truth: list) -> float:
+    cnt = 0
+    for o, t in zip(output, truth):
+        if o.strip() == t.strip():
+            cnt += 1
+    return cnt * 1.0 / len(output)
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+
+    model = NGramModel(
+        n=args.n,
+        table_path='pinyin_table',
+        file_path='sina_news')
+    if args.task == 'train':
+        model.train()
+        saveName = 'src/models/%d-gram' % args.n
+        model.save_model(toDir=saveName)
+    elif args.task == 'translate':
+        if args.input is None or args.output is None:
+            print('[Error] Missing input/output file.')
+            exit(-1)
+        model.load_model(fromDir='src/models/%d-gram' % args.n)
+        result = [model.translate(l) for l in args.input.readlines()]
+        args.output.writelines(result)
+        print("[Info] Translated %d lines." % len(result))
+    elif args.task == 'test':
+        if args.input is None or args.output is None or args.truth is None:
+            print('[Error] Missing input/output/ground_truth file.')
+            exit(-1)
+        model.load_model(fromDir='src/models/%d-gram' % args.n)
+        result = [model.translate(l) for l in args.input.readlines()]
+        args.output.writelines(result)
+        truth = args.truth.readlines()
+        if len(result) != len(truth):
+            print('[Error] Number of lines in the output does not match the ground truth!')
+            exit(-1)
+        accuracy = check_result(result, truth)
+        print('[Info] Generated %d lines, with accuracy = %f' % (len(result), accuracy))
+    elif args.task == 'console':
+        model.load_model(fromDir='src/models/%d-gram' % args.n)
+        print("[Info] Entering console mode. Use Ctrl-C/D to exit.")
+        while True:
+            in_s = input(">> Input: ")
+            result = model.translate(in_s)
+            print(result)
