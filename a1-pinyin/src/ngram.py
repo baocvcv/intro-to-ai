@@ -9,6 +9,9 @@ from collections import defaultdict, Counter, OrderedDict
 import dill as pickle
 from .basemodel import BaseModel
 
+#TODO: change prob dict to using integer index and 8-bit probability
+#TODO: change training to working on a single length at a time
+
 class OrderedCounter(Counter, OrderedDict):
     ' Counter with order '
 

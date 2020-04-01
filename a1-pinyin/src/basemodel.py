@@ -2,6 +2,7 @@
 
 from os import listdir
 from os.path import join
+import io
 import gc
 from collections import defaultdict
 import re
@@ -42,12 +43,16 @@ class BaseModel:
         ' Load pinyin table '
         # parse word list
         print("[Info] Loading character list...")
-        self.all_words = open(join(self.table_path, "words_list.txt")).read()
+        self.all_words = io.open(join(self.table_path, "words_list.txt"),
+                                 mode='r',
+                                 encoding='utf-8').read()
         for idx, word in enumerate(self.all_words):
             self.word_dict[word] = idx
         # parse pinyin list
         print("[Info] Loading pinyin dictionary...")
-        pinyin_list = open(join(self.table_path, "pinyin_dict.txt")).readlines()
+        pinyin_list = io.open(join(self.table_path, "pinyin_dict.txt"),
+                              mode='r',
+                              encoding='utf-8').readlines()
         for line in pinyin_list:
             words = line.split()
             self.pinyin_dict[words[0]] = words[1:]
@@ -65,7 +70,9 @@ class BaseModel:
             if 'README' in filename or 'readme' in filename:
                 continue
             print("[Info] Going through ", filename)
-            file_content = open(join(self.file_path, filename), 'r').readlines()
+            file_content = io.open(join(self.file_path, filename),
+                                   mode='r',
+                                   encoding='utf-8').readlines()
             for line in file_content:
                 line_content = punc.sub(' ', json.loads(line)['html'])
                 for l in line_content.split():
