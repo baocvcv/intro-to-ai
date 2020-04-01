@@ -5,8 +5,10 @@ from os import makedirs
 from os.path import join, isdir, exists
 from math import log
 from collections import defaultdict, Counter, OrderedDict
-# import pickle
+
 import dill as pickle
+from pypinyin import lazy_pinyin, load_phrases_dict
+
 from .basemodel import BaseModel
 
 #TODO: change prob dict to using integer index and 8-bit probability
@@ -37,6 +39,11 @@ class NGramModel(BaseModel):
         self.model_dir = model_path
         if not isdir(model_path):
             makedirs(model_path)
+            
+        # pinyin dict
+        load_phrases_dict({'哪些': [['na3'], ['xi2e']],
+                           '哪个': [['na3'], ['ge4']]},
+                          style='tone2')
         
     def train(self, force=False):
         ' Train '
@@ -66,7 +73,7 @@ class NGramModel(BaseModel):
         for line in self.generate_data():
             _len = len(line)
             i = 0
-            while i < (_len-nn-1):
+            while i < (_len-nn+1):
                 for j in range(i, i+nn):
                     if line[j] not in self.all_words:
                         i = j + 1
@@ -91,10 +98,8 @@ class NGramModel(BaseModel):
                     continue
                 i += 1
 
-        # print("华|新: ", self.conditional_pro[1]['新']['华'])
-        # print("新：", phrase_counter[1]['新'])
-        # print("' '：", phrase_counter[0][''])
-        # print("total: ", total_num_phrase)
+        # print("华|新: ", conditional_pro[index['新']][self.all_words['华']])
+        # print("新：", phrase_counter['新'])
 
         # calculate probability
         for phrase, idx in index.items(): # for each phrase
@@ -104,8 +109,7 @@ class NGramModel(BaseModel):
                 cp[w] = (cp[w]-self.D_VALUE) / cnt
             lambdas.append(self.D_VALUE / cnt)
         print("[Info] Training finished!")
-        # print("P(华|新): ", self.conditional_pro[1]['新']['华'])
-        # print("P(新|''): ", self.conditional_pro[0]['']['新'])
+        # print("P(华|新): ", conditional_pro[index['新']][self.all_words['华']])
         print("[Info] Saving model...")
         self.save_model(index, 'index%d.p' % nn)
         self.save_model(lambdas, 'lambdas%d.p' % nn)
@@ -168,27 +172,22 @@ class NGramModel(BaseModel):
                 new_sentences[best_sentence] = max_prob
             old_sentences = new_sentences
 
-        # get max and return
+        # sort result
         result = list(old_sentences.items())
         result.sort(key=lambda r: r[1], reverse=True)
+        # eliminate wrong pronunciations
+        i = 0
+        while i < len(result) and i < 5:
+            pinyin_out = ' '.join(lazy_pinyin(result[i][0]))
+            if pinyin_out != pinyin_input:
+                result.pop(i)
+            else:
+                i += 1
         print(result[:5])
+        if len(result) == 0:
+            print("[Error] Please check your input.")
+            return ''
         return result[0][0]
-
-    # def get_probability(self, w, w_prev):
-    #     ' Retrieve probability of P(w | w_prev) '
-    #     if w_prev == '':
-    #         if w in self.conditional_pro[0]['']:
-    #             return self.conditional_pro[0][''][w]
-    #         else:
-    #             return self.lambdas[0]['']
-
-    #     l = len(w_prev)
-    #     if w_prev in self.conditional_pro[l]:
-    #         p1 = self.conditional_pro[l][w_prev][w]
-    #         p2 = self.get_probability(w, w_prev[1:])
-    #         return p1 + self.lambdas[l][w_prev] * p2
-    #     else:
-    #         return self.get_probability(w, w_prev[1:])
 
     def get_probability(self, w, w_prev):
         ' Retrieve probability of P(w | w_prev) '

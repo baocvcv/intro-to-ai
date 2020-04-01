@@ -6,9 +6,10 @@ import io
 import gc
 from collections import defaultdict
 import re
-from zhon.hanzi import punctuation as ch_punct
 from string import punctuation as eng_punct
 import json
+
+from zhon.hanzi import punctuation as ch_punct
 
 class BaseModel:
     ' Base class for all models  '
@@ -41,14 +42,6 @@ class BaseModel:
 
     def load_pinyin_table(self):
         ' Load pinyin table '
-        # parse word list
-        # print("[Info] Loading character list...")
-        # self.all_words = io.open(join(self.table_path, "words_list.txt"),
-        #                          mode='r',
-        #                          encoding='utf-8').read()
-        # for idx, word in enumerate(self.all_words):
-        #     self.word_dict[word] = idx
-        # parse pinyin list
         print("[Info] Loading pinyin dictionary...")
         pinyin_list = io.open(join(self.table_path, "pinyin_dict.txt"),
                               mode='r',

@@ -39,20 +39,29 @@ if __name__ == '__main__':
     elif args.task == 'retrain':
         model.train(force=True)
     elif args.task == 'translate':
-        if args.input is None or args.output is None:
-            print('[Error] Missing input/output file.')
+        if args.input is None:
+            print('[Error] Missing input file.')
             exit(-1)
         model.load_model()
         result = [model.translate(l) for l in args.input.readlines()]
-        args.output.writelines(result)
         print("[Info] Translated %d lines." % len(result))
+        if args.output is None:
+            print(result)
+        else:
+            args.output.writelines(result)
+            print("[Info] Results saved to ", args.output.name)
     elif args.task == 'test':
         if args.input is None or args.output is None or args.truth is None:
             print('[Error] Missing input/output/ground_truth file.')
             exit(-1)
         model.load_model()
         result = [model.translate(l) for l in args.input.readlines()]
-        args.output.writelines(result)
+        print("[Info] Results:")
+        if args.output is None:
+            print(result)
+        else:
+            args.output.writelines(result)
+            print("[Info] Results saved to ", args.output.name)
         truth = args.truth.readlines()
         if len(result) != len(truth):
             print('[Error] Number of lines in the output does not match the ground truth!')
