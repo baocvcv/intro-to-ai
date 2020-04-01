@@ -12,8 +12,6 @@ import json
 
 class BaseModel:
     ' Base class for all models  '
-    # all the Chinese characters in a string
-    all_words = ""
 
     def __init__(self, table_path='../pinyin_table', file_path=''):
         ' Constructor '
@@ -21,6 +19,8 @@ class BaseModel:
         self.file_path = file_path
         # pinyin table path
         self.table_path = table_path
+        # all the Chinese characters in a string
+        self.all_words = ""
         # words -> index in self.all_words
         self.word_dict = defaultdict(lambda: -1)
         # pinyin -> list of words
@@ -42,20 +42,24 @@ class BaseModel:
     def load_pinyin_table(self):
         ' Load pinyin table '
         # parse word list
-        print("[Info] Loading character list...")
-        self.all_words = io.open(join(self.table_path, "words_list.txt"),
-                                 mode='r',
-                                 encoding='utf-8').read()
-        for idx, word in enumerate(self.all_words):
-            self.word_dict[word] = idx
+        # print("[Info] Loading character list...")
+        # self.all_words = io.open(join(self.table_path, "words_list.txt"),
+        #                          mode='r',
+        #                          encoding='utf-8').read()
+        # for idx, word in enumerate(self.all_words):
+        #     self.word_dict[word] = idx
         # parse pinyin list
         print("[Info] Loading pinyin dictionary...")
         pinyin_list = io.open(join(self.table_path, "pinyin_dict.txt"),
                               mode='r',
                               encoding='utf-8').readlines()
+        self.all_words = {}
         for line in pinyin_list:
             words = line.split()
             self.pinyin_dict[words[0]] = words[1:]
+            for w in words[1:]:
+                if w not in self.all_words:
+                    self.all_words[w] = len(self.all_words)
         print("[Info] Loading finished!")
         gc.collect()
 

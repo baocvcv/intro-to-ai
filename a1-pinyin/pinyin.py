@@ -10,9 +10,12 @@ parser.add_argument('-o', '--output', dest='output', type=argparse.FileType('w')
                     metavar='FILE', help='Path to output file')
 parser.add_argument('-t', '--truth', dest='truth', type=argparse.FileType('r'),
                     metavar='FILE', help='Path to ground truth file')
+parser.add_argument('-s', '--source', dest='source', type=str, default='sina_news',
+                    metavar='FILEPATH', help='Path to training source file')
 parser.add_argument('-n', dest='n', default=2, type=int,
                     metavar='NGRAM', help='Default as 2')
-parser.add_argument('task', type=str, choices=['train', 'translate', 'test', 'console'],
+parser.add_argument('task', type=str,
+                    choices=['train', 'retrain', 'translate', 'test', 'console'],
                     help='Train, translate only, test accuracy, or use console mode')
 
 def check_result(output: list, truth: list) -> float:
@@ -25,19 +28,21 @@ def check_result(output: list, truth: list) -> float:
 if __name__ == '__main__':
     args = parser.parse_args()
 
+    modelDir = 'src/models/jieba' if args.fenci else 'src/models/n-gram'
     model = NGramModel(
         n=args.n,
         table_path='pinyin_table',
-        file_path='sina_news')
+        file_path=args.source,
+        model_path=modelDir)
     if args.task == 'train':
         model.train()
-        saveName = 'src/models/%d-gram' % args.n
-        model.save_model(toDir=saveName)
+    elif args.task == 'retrain':
+        model.train(force=True)
     elif args.task == 'translate':
         if args.input is None or args.output is None:
             print('[Error] Missing input/output file.')
             exit(-1)
-        model.load_model(fromDir='src/models/%d-gram' % args.n)
+        model.load_model()
         result = [model.translate(l) for l in args.input.readlines()]
         args.output.writelines(result)
         print("[Info] Translated %d lines." % len(result))
@@ -45,7 +50,7 @@ if __name__ == '__main__':
         if args.input is None or args.output is None or args.truth is None:
             print('[Error] Missing input/output/ground_truth file.')
             exit(-1)
-        model.load_model(fromDir='src/models/%d-gram' % args.n)
+        model.load_model()
         result = [model.translate(l) for l in args.input.readlines()]
         args.output.writelines(result)
         truth = args.truth.readlines()
@@ -55,7 +60,7 @@ if __name__ == '__main__':
         accuracy = check_result(result, truth)
         print('[Info] Generated %d lines, with accuracy = %f' % (len(result), accuracy))
     elif args.task == 'console':
-        model.load_model(fromDir='src/models/%d-gram' % args.n)
+        model.load_model()
         print("[Info] Entering console mode. Use Ctrl-C/D to exit.")
         while True:
             in_s = input(">> Input: ")
