@@ -6,10 +6,10 @@ import io
 import gc
 from collections import defaultdict
 import re
-from string import punctuation as eng_punct
 import json
+# from string import punctuation as eng_punct
 
-from zhon.hanzi import punctuation as ch_punct
+# from zhon.hanzi import punctuation as ch_punct
 
 class BaseModel:
     ' Base class for all models  '
@@ -52,7 +52,7 @@ class BaseModel:
             self.pinyin_dict[words[0]] = words[1:]
             for w in words[1:]:
                 if w not in self.all_words:
-                    self.all_words[w] = len(self.all_words)
+                    self.all_words[w+words[0]] = len(self.all_words)
         print("[Info] Loading finished!")
         gc.collect()
 
@@ -62,7 +62,8 @@ class BaseModel:
             print("[Error] Training file path not set!")
             exit()
         # re to filter out punctuations
-        punc = re.compile(r"[%s%s0-9]+" % (ch_punct, eng_punct))
+        # punc = re.compile(r"[%s%s0-9a-zA-Z]+" % (ch_punct, eng_punct))
+        punc = re.compile(r"[^\u4e00-\u9fff]+")
         for filename in listdir(self.file_path):
             if 'README' in filename or 'readme' in filename:
                 continue
@@ -73,4 +74,5 @@ class BaseModel:
             for line in file_content:
                 line_content = punc.sub(' ', json.loads(line)['html'])
                 for l in line_content.split():
-                    yield l
+                    if l != '':
+                        yield l

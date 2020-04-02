@@ -71,9 +71,12 @@ class NGramModel(BaseModel):
         phrase_counter = Counter()
         for line in self.generate_data():
             _len = len(line)
+            py_line = [line[i]+py for i,py in enumerate(lazy_pinyin(line))]
+            get_line = lambda x,y: ''.join(py_line[x:y])
             for i in range(_len-nn):
                 ' count number of different phrases '
-                p = line[i : i+nn]
+                # p = line[i : i+nn]
+                p = get_line(i, i+nn)
                 phrase_counter[p] += 1
                 ' add to index '
                 idx = -1
@@ -85,18 +88,19 @@ class NGramModel(BaseModel):
 
                 ' count conditional occurrences '
                 idx_word = -1
-                if line[i+nn] in self.all_words:
-                    idx_word = self.all_words[line[i+nn]]
+                word = get_line(i+nn, i+nn+1)
+                if word in self.all_words:
+                    idx_word = self.all_words[word]
                 else:
-                    idx_word = self.all_words[line[i+nn]] = len(self.all_words)
+                    idx_word = self.all_words[word] = len(self.all_words)
                 conditional_pro[idx][idx_word] += 1
             if _len-nn >= 0:
-                p = line[_len-nn : _len]
-                phrase_counter[p] += 1
+                # p = line[_len-nn : _len]
+                phrase_counter[get_line(_len-nn, _len)] += 1
 
 
-        # print("华|新: ", conditional_pro[index['新']][self.all_words['华']])
-        # print("新：", phrase_counter['新'])
+        # print("华|新: ", conditional_pro[index['新xin']][self.all_words['华hua']])
+        # print("新：", phrase_counter['新xin'])
 
         # calculate probability
         for phrase, idx in index.items(): # for each phrase
@@ -106,7 +110,7 @@ class NGramModel(BaseModel):
                 cp[w] = (cp[w]-self.D_VALUE) / cnt
             lambdas.append(self.D_VALUE / cnt)
         print("[Info] Training finished!")
-        # print("P(华|新): ", conditional_pro[index['新']][self.all_words['华']])
+        # print("P(华hua|新xin): ", conditional_pro[index['新xin']][self.all_words['华hua']])
         print("[Info] Saving model...")
         self.save_model(index, 'index%d.p' % nn)
         self.save_model(lambdas, 'lambdas%d.p' % nn)
@@ -147,11 +151,11 @@ class NGramModel(BaseModel):
 
     def translate(self, pinyin_input: str) -> str:
         ' Translate the input pinyin to words '
-        pinyin_input = pinyin_input.lower()
+        pinyin_input = pinyin_input.lower().split(' ')
 
         old_sentences = defaultdict(float)
         old_sentences[''] = .0
-        for _len, syllable in enumerate(pinyin_input.split(' ')):
+        for _len, syllable in enumerate(pinyin_input):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history
             print('[%d]: ' % _len, old_sentences)
@@ -161,8 +165,9 @@ class NGramModel(BaseModel):
                 max_prob = float('-inf')
                 for sentence in old_sentences:
                     w_prev = sentence[-self.n+1:]
-                    cur_prob = old_sentences[sentence] \
-                        + log(self.get_probability(w, w_prev))
+                    prob = self.get_probability(w + pinyin_input[_len], w_prev,
+                                                pinyin_input[_len-self.n:_len])
+                    cur_prob = old_sentences[sentence] + log(prob)
                     if cur_prob > max_prob:
                         max_prob = cur_prob
                         best_sentence = sentence + w
@@ -172,21 +177,13 @@ class NGramModel(BaseModel):
         # sort result
         result = list(old_sentences.items())
         result.sort(key=lambda r: r[1], reverse=True)
-        # eliminate wrong pronunciations
-        i = 0
-        while i < len(result) and i < 5:
-            pinyin_out = ' '.join(lazy_pinyin(result[i][0]))
-            if pinyin_out != pinyin_input:
-                result.pop(i)
-            else:
-                i += 1
         print(result[:5])
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
         return result[0][0]
 
-    def get_probability(self, w, w_prev):
+    def get_probability(self, w: str, w_prev: str, prev_py: list):
         ' Retrieve probability of P(w | w_prev) '
         if w_prev == '':
             # the index for '' is 0
@@ -197,12 +194,13 @@ class NGramModel(BaseModel):
                 return self.lambdas[0][0]
 
         l = len(w_prev)
-        if w_prev in self.index[l]:
-            idx = self.index[l][w_prev]
+        w_prev_py = [w_prev[i]+py for i,py in enumerate(prev_py)]
+        if w_prev_py in self.index[l]:
+            idx = self.index[l][w_prev_py]
             idx_word = self.all_words[w]
             p1 = self.conditional_pro[l][idx][idx_word]
-            p2 = self.get_probability(w, w_prev[1:])
+            p2 = self.get_probability(w, w_prev[1:], prev_py[1:])
             return p1 + self.lambdas[l][idx] * p2
         else:
-            return self.get_probability(w, w_prev[1:])
+            return self.get_probability(w, w_prev[1:], prev_py[1:])
 

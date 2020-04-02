@@ -8,10 +8,10 @@ parser.add_argument('-i', '--input', dest='input', type=argparse.FileType('r'),
                     metavar='FILE', help='Path to input pinyin file')
 parser.add_argument('-o', '--output', dest='output', type=argparse.FileType('w'),
                     metavar='FILE', help='Path to output file')
-parser.add_argument('-t', '--truth', dest='truth', type=argparse.FileType('r'),
-                    metavar='FILE', help='Path to ground truth file')
 parser.add_argument('-s', '--source', dest='source', type=str, default='sina_news',
                     metavar='FILEPATH', help='Path to training source file')
+parser.add_argument('-m', '--model', dest='model', type=str, default='src/models/n-gram',
+                    metavar='FILEPATH', help='Path to model files')
 parser.add_argument('-n', dest='n', default=2, type=int,
                     metavar='NGRAM', help='Default as 2')
 parser.add_argument('task', type=str,
@@ -28,12 +28,11 @@ def check_result(output: list, truth: list) -> float:
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    modelDir = 'src/models/jieba' if args.fenci else 'src/models/n-gram'
     model = NGramModel(
         n=args.n,
         table_path='pinyin_table',
         file_path=args.source,
-        model_path=modelDir)
+        model_path=args.model)
     if args.task == 'train':
         model.train()
     elif args.task == 'retrain':
@@ -51,22 +50,19 @@ if __name__ == '__main__':
             args.output.writelines(result)
             print("[Info] Results saved to ", args.output.name)
     elif args.task == 'test':
-        if args.input is None or args.output is None or args.truth is None:
-            print('[Error] Missing input/output/ground_truth file.')
+        if args.input is None:
+            print('[Error] Missing input file.')
             exit(-1)
         model.load_model()
-        result = [model.translate(l) for l in args.input.readlines()]
+        lines = args.input.readlines()
+        result = [model.translate(l) for l in lines[0::2]]
         print("[Info] Results:")
         if args.output is None:
             print(result)
         else:
             args.output.writelines(result)
             print("[Info] Results saved to ", args.output.name)
-        truth = args.truth.readlines()
-        if len(result) != len(truth):
-            print('[Error] Number of lines in the output does not match the ground truth!')
-            exit(-1)
-        accuracy = check_result(result, truth)
+        accuracy = check_result(result, lines[1::2])
         print('[Info] Generated %d lines, with accuracy = %f' % (len(result), accuracy))
     elif args.task == 'console':
         model.load_model()
