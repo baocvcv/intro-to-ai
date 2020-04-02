@@ -11,7 +11,6 @@ from pypinyin import lazy_pinyin, load_phrases_dict
 
 from .basemodel import BaseModel
 
-#TODO: change prob dict to using integer index and 8-bit probability
 class OrderedCounter(Counter, OrderedDict):
     ' Counter with order '
 
@@ -39,12 +38,12 @@ class NGramModel(BaseModel):
         self.model_dir = model_path
         if not isdir(model_path):
             makedirs(model_path)
-            
+
         # pinyin dict
         load_phrases_dict({'哪些': [['na3'], ['xi2e']],
                            '哪个': [['na3'], ['ge4']]},
                           style='tone2')
-        
+
     def train(self, force=False):
         ' Train '
         print("[Info] Training the model...")
@@ -72,12 +71,7 @@ class NGramModel(BaseModel):
         phrase_counter = Counter()
         for line in self.generate_data():
             _len = len(line)
-            i = 0
-            while i < (_len-nn+1):
-                for j in range(i, i+nn):
-                    if line[j] not in self.all_words:
-                        i = j + 1
-                        continue
+            for i in range(_len-nn):
                 ' count number of different phrases '
                 p = line[i : i+nn]
                 phrase_counter[p] += 1
@@ -90,13 +84,16 @@ class NGramModel(BaseModel):
                     idx = index[p]
 
                 ' count conditional occurrences '
-                if i+nn < _len and line[i+nn] in self.all_words:
+                idx_word = -1
+                if line[i+nn] in self.all_words:
                     idx_word = self.all_words[line[i+nn]]
-                    conditional_pro[idx][idx_word] += 1
                 else:
-                    i = i + nn + 1
-                    continue
-                i += 1
+                    idx_word = self.all_words[line[i+nn]] = len(self.all_words)
+                conditional_pro[idx][idx_word] += 1
+            if _len-nn >= 0:
+                p = line[_len-nn : _len]
+                phrase_counter[p] += 1
+
 
         # print("华|新: ", conditional_pro[index['新']][self.all_words['华']])
         # print("新：", phrase_counter['新'])
@@ -157,7 +154,7 @@ class NGramModel(BaseModel):
         for _len, syllable in enumerate(pinyin_input.split(' ')):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history
-            # print('[%d]: ' % _len, old_sentences)
+            print('[%d]: ' % _len, old_sentences)
             new_sentences = defaultdict(float)
             for w in self.pinyin_dict[syllable]:
                 best_sentence = ''
@@ -193,11 +190,12 @@ class NGramModel(BaseModel):
         ' Retrieve probability of P(w | w_prev) '
         if w_prev == '':
             # the index for '' is 0
-            if w in self.conditional_pro[0][0]:
-                return self.conditional_pro[0][0][w]
+            idx_word = self.all_words[w]
+            if idx_word in self.conditional_pro[0][0]:
+                return self.conditional_pro[0][0][idx_word]
             else:
                 return self.lambdas[0][0]
-        
+
         l = len(w_prev)
         if w_prev in self.index[l]:
             idx = self.index[l][w_prev]
