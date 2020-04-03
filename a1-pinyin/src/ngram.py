@@ -5,6 +5,7 @@ from os import makedirs
 from os.path import join, isdir, exists
 from math import log
 from collections import defaultdict, Counter, OrderedDict
+import time
 
 import dill as pickle
 from pypinyin import lazy_pinyin, load_phrases_dict
@@ -47,12 +48,15 @@ class NGramModel(BaseModel):
     def train(self, force=False):
         ' Train '
         print("[Info] Training the model...")
+        time_d = time.time()
         for i in range(self.n-1):
             if force or not exists(join(self.model_dir, 'prob%d.p' % i)):
                 print("[Info] Running with n = %d" % i)
                 self.train_n(i)
         print("[Info] Running with n = %d" % (self.n - 1))
         self.train_n(self.n-1)
+        time_d = round(time.time()-time_d, 3)
+        print("[Info] Training took %ss" % time_d)
 
     def train_n(self, nn):
         ' Train '
@@ -147,14 +151,14 @@ class NGramModel(BaseModel):
 
     def translate(self, pinyin_input: str) -> str:
         ' Translate the input pinyin to words '
-        pinyin_input = pinyin_input.lower()
+        pinyin_input = pinyin_input.lower().strip()
 
         old_sentences = defaultdict(float)
         old_sentences[''] = .0
         for _len, syllable in enumerate(pinyin_input.split(' ')):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history
-            print('[%d]: ' % _len, old_sentences)
+            # print('[%d]: ' % _len, old_sentences)
             new_sentences = defaultdict(float)
             for w in self.pinyin_dict[syllable]:
                 best_sentence = ''
@@ -173,14 +177,14 @@ class NGramModel(BaseModel):
         result = list(old_sentences.items())
         result.sort(key=lambda r: r[1], reverse=True)
         # eliminate wrong pronunciations
-        i = 0
-        while i < len(result) and i < 5:
-            pinyin_out = ' '.join(lazy_pinyin(result[i][0]))
-            if pinyin_out != pinyin_input:
-                result.pop(i)
-            else:
-                i += 1
-        print(result[:5])
+        # i = 0
+        # while i < len(result) and i < 5:
+        #     pinyin_out = ' '.join(lazy_pinyin(result[i][0]))
+        #     if pinyin_out != pinyin_input:
+        #         result.pop(i)
+        #     else:
+        #         i += 1
+        # print(result[:5])
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
