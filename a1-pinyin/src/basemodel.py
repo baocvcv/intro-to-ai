@@ -52,7 +52,7 @@ class BaseModel:
             self.pinyin_dict[words[0]] = words[1:]
             for w in words[1:]:
                 if w not in self.all_words:
-                    self.all_words[w+words[0]] = len(self.all_words)
+                    self.all_words[w] = len(self.all_words)
         print("[Info] Loading finished!")
         gc.collect()
 

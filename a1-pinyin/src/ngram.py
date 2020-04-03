@@ -6,9 +6,9 @@ from os.path import join, isdir, exists
 from math import log
 from collections import defaultdict, Counter, OrderedDict
 import time
+import re
 
 import dill as pickle
-from pypinyin import lazy_pinyin, load_phrases_dict
 
 from .basemodel import BaseModel
 
@@ -39,11 +39,6 @@ class NGramModel(BaseModel):
         self.model_dir = model_path
         if not isdir(model_path):
             makedirs(model_path)
-
-        # pinyin dict
-        load_phrases_dict({'哪些': [['na3'], ['xi2e']],
-                           '哪个': [['na3'], ['ge4']]},
-                          style='tone2')
 
     def train(self, force=False):
         ' Train '
@@ -151,11 +146,11 @@ class NGramModel(BaseModel):
 
     def translate(self, pinyin_input: str) -> str:
         ' Translate the input pinyin to words '
-        pinyin_input = pinyin_input.lower().strip()
+        pinyin_input = re.split(r'\s+', pinyin_input.lower().strip())
 
         old_sentences = defaultdict(float)
         old_sentences[''] = .0
-        for _len, syllable in enumerate(pinyin_input.split(' ')):
+        for _len, syllable in enumerate(pinyin_input):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history
             # print('[%d]: ' % _len, old_sentences)
@@ -176,14 +171,6 @@ class NGramModel(BaseModel):
         # sort result
         result = list(old_sentences.items())
         result.sort(key=lambda r: r[1], reverse=True)
-        # eliminate wrong pronunciations
-        # i = 0
-        # while i < len(result) and i < 5:
-        #     pinyin_out = ' '.join(lazy_pinyin(result[i][0]))
-        #     if pinyin_out != pinyin_input:
-        #         result.pop(i)
-        #     else:
-        #         i += 1
         # print(result[:5])
         if len(result) == 0:
             print("[Error] Please check your input.")
