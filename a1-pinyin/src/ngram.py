@@ -9,6 +9,7 @@ import time
 import re
 
 import dill as pickle
+import jieba
 
 from .basemodel import BaseModel
 
@@ -23,10 +24,10 @@ class OrderedCounter(Counter, OrderedDict):
 
 class NGramModel(BaseModel):
     ' The N-Gram model '
-    # LAMBDA = 0.95
     # use absolute discounting
-    D_VALUE_1 = 0.5
+    # D_VALUE_1 = 0.5
     D_VALUE = 0.75
+    # D_VALUE = 0.99
 
     def __init__(self,
                  n=2,
@@ -44,6 +45,7 @@ class NGramModel(BaseModel):
         ' Train '
         print("[Info] Training the model...")
         time_d = time.time()
+        # train word based n-gram model
         for i in range(self.n-1):
             if force or not exists(join(self.model_dir, 'prob%d.p' % i)):
                 print("[Info] Running with n = %d" % i)
@@ -51,7 +53,7 @@ class NGramModel(BaseModel):
         print("[Info] Running with n = %d" % (self.n - 1))
         self.train_n(self.n-1)
         time_d = round(time.time()-time_d, 3)
-        print("[Info] Training took %ss" % time_d)
+        print("[Info] Training took %ss" % (self.n, time_d))
 
     def train_n(self, nn):
         ' Train '
@@ -73,37 +75,45 @@ class NGramModel(BaseModel):
             for i in range(_len-nn):
                 ' count number of different phrases '
                 p = line[i : i+nn]
-                phrase_counter[p] += 1
                 ' add to index '
                 idx = -1
                 if p not in index:
-                    idx = index[p] = len(conditional_pro)
+                    idx = index[p] = len(index)
                     conditional_pro.append(defaultdict(float))
                 else:
                     idx = index[p]
+                phrase_counter[idx] += 1
 
                 ' count conditional occurrences '
                 idx_word = -1
-                if line[i+nn] in self.all_words:
-                    idx_word = self.all_words[line[i+nn]]
+                word = line[i+nn]
+                if word in self.all_words:
+                    idx_word = self.all_words[word]
                 else:
-                    idx_word = self.all_words[line[i+nn]] = len(self.all_words)
+                    idx_word = self.all_words[word] = len(self.all_words)
                 conditional_pro[idx][idx_word] += 1
             if _len-nn >= 0:
                 p = line[_len-nn : _len]
-                phrase_counter[p] += 1
+                idx = -1
+                if p not in index:
+                    idx = index[p] = len(index)
+                    conditional_pro.append(defaultdict(float))
+                else:
+                    idx = index[p]
+                phrase_counter[idx] += 1
 
 
         # print("华|新: ", conditional_pro[index['新']][self.all_words['华']])
         # print("新：", phrase_counter['新'])
 
         # calculate probability
-        for phrase, idx in index.items(): # for each phrase
-            cnt = phrase_counter[phrase]
+        for _, idx in index.items(): # for each phrase
+            cnt = phrase_counter[idx]
             cp = conditional_pro[idx]
             for w in cp: # each word
                 cp[w] = (cp[w]-self.D_VALUE) / cnt
             lambdas.append(self.D_VALUE / cnt)
+        print("[Info] Dict size: ", len(phrase_counter))
         print("[Info] Training finished!")
         # print("P(华|新): ", conditional_pro[index['新']][self.all_words['华']])
         print("[Info] Saving model...")
@@ -121,6 +131,7 @@ class NGramModel(BaseModel):
 
     def load_model(self):
         ' Load saved model '
+        # word ngram
         self.lambdas = []
         self.conditional_pro = []
         self.index = []
@@ -171,7 +182,7 @@ class NGramModel(BaseModel):
         # sort result
         result = list(old_sentences.items())
         result.sort(key=lambda r: r[1], reverse=True)
-        # print(result[:5])
+        # print(result)
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
