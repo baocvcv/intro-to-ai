@@ -48,12 +48,12 @@ yong yuan ju bu zui you jiu de ren dao bu liao quan ju zui you
 永远局部最优解的人到不了全局最优
 zhi dao bo shi bi ye mi mang de shi hou
 直到博士毕业迷茫的时候
-cai fa xian zi ji mei you xiang hao yao zuo shen me cheng wei zen yang de ren
-才发现自己没有想好要做什么成为怎样的人
+cai fa xian zi ji mei you xiang hao yao zuo shen me
+才发现自己没有想好要做什么
 sui bian xue dian ji suan ji zhao ge gong zuo
 随便学点计算机找个工作
-bian cheng le yi ge gao xue li si kao neng li chao qun de pu tong ren
-变成了一个高学历思考能力超群的普通人
+bian cheng le yi ge si kao neng li chao qun de pu tong ren
+变成了一个思考能力超群的普通人
 yi ge zi ren wei qian li bu fan de ren tong guo jian ku zhuo jue de nu li
 一个自认为潜力不凡的人通过艰苦卓绝的努力
 zui hou cheng wei le yi ge zai lian shu xie dai ma de pu tong ren
@@ -102,8 +102,10 @@ shang ban wei le xia ban
 上班为了下班
 bao an bao an bao bu liao ren he ren an ni shuo ke xiao bu ke xiao
 保安保安保不了任何人安你说可笑不可笑
-ta men shi ren shang ren er wo shi lao shu ren jian bu de guang de lao shu ren
-他们是人上人而我是老鼠人见不得光的老鼠人
+ta men shi ren shang ren 
+他们是人上人
+wo shi lao shu ren jian bu de guang de lao shu ren
+我是老鼠人见不得光的老鼠人
 wo bu shi he zhi li wo hai shi hui wo de bao an shi qu
 我不适合这里我还是回我的保安室去
 yong nv zi pang de ta lai ce shi yi xia

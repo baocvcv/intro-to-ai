@@ -11,15 +11,13 @@ import io
 
 import dill as pickle
 
-from .basemodel import BaseModel
+from .ngram import NGramModel
 
 DEBUG = False
 
-class NGramPYModel(BaseModel):
+class NGramPYModel(NGramModel):
     ' The N-Gram model with zhuyin '
-    # LAMBDA = 0.95
     # use absolute discounting
-    D_VALUE_1 = 0.5
     D_VALUE = 0.75
 
     def __init__(self,
@@ -28,25 +26,7 @@ class NGramPYModel(BaseModel):
                  file_path='',
                  model_path='models/n-gram'):
         ' Constructor '
-        super().__init__(table_path, file_path)
-        self.n = n
-        self.model_dir = model_path
-        if not isdir(model_path):
-            makedirs(model_path)
-        self.load_pinyin_table()
-
-    def train(self, force=False):
-        ' Train '
-        print("[Info] Training the model...")
-        t = time.time()
-        for i in range(self.n-1):
-            if force or not exists(join(self.model_dir, 'prob%d.p' % i)):
-                print("[Info] Running with n = %d" % i)
-                self.train_n(i)
-        print("[Info] Running with n = %d" % (self.n - 1))
-        self.train_n(self.n-1)
-        t = round(time.time() - t, 3)
-        print("[Info] Training took %s seconds" % (t))
+        super().__init__(n, table_path, file_path, model_path)
 
     def load_pinyin_table(self):
         ' Load pinyin table '
@@ -133,50 +113,33 @@ class NGramPYModel(BaseModel):
         print("[Info] Model saved.")
         gc.collect()
 
-    def save_model(self, data, name: str):
-        ' Save the model params '
-        pickle.dump(data,
-                    open(join(self.model_dir, name), 'wb'))
-        print("[Info] Saved %s to " % name, self.model_dir)
-
-    def load_model(self):
-        ' Load saved model '
-        self.lambdas = []
-        self.conditional_pro = []
-        self.index = []
-        for i in range(self.n):
-            self.conditional_pro.append(pickle.load(
-                open(join(self.model_dir, 'prob%d.p' % i), 'rb')))
-            self.lambdas.append(pickle.load(
-                open(join(self.model_dir, 'lambdas%d.p' % i), 'rb')))
-            self.index.append(pickle.load(
-                open(join(self.model_dir, 'index%d.p' % i), 'rb')))
-        print("[Info] Loaded model from ", self.model_dir)
-
-        ' used for debug '
-        # for idx, p in enumerate(self.conditional_pro):
-        #     print("---------{}--------".format(idx))
-        #     for i, x in enumerate(p):
-        #         for j, y in enumerate(p[x]):
-        #             print("%s|%s" % (y, x), "=>", p[x][y])
-        #             if j > 10:
-        #                 break
-        #         if i > 20:
-        #             break
-
     def translate(self, pinyin_input: str) -> str:
+        ' Translate the input pinyin to words '
+        result = self._translate(pinyin_input)
+        # sort result
+        result = list(result.items())
+        result.sort(key=lambda r: r[1], reverse=True)
+        if DEBUG:
+            print(result)
+        if len(result) == 0:
+            print("[Error] Please check your input.")
+            return ''
+        return result[0][0]
+
+    def _translate(self,
+                   pinyin_input: str,
+                   prior: dict = {'': .0}) -> dict:
         ' Translate the input pinyin to words '
         pinyin_input = pinyin_input.lower().strip()
         pinyin_input = re.split(r'\s+', pinyin_input)
 
-        old_sentences = defaultdict(float)
-        old_sentences[''] = .0
+        old_sentences = prior
         for _len, syllable in enumerate(pinyin_input):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history
             if DEBUG:
                 print('[%d]: ' % _len, old_sentences)
-            new_sentences = defaultdict(float)
+            new_sentences = {}
             for w in self.pinyin_dict[syllable]:
                 best_sentence = ''
                 max_prob = float('-inf')
@@ -191,16 +154,7 @@ class NGramPYModel(BaseModel):
                         best_sentence = sentence + w
                 new_sentences[best_sentence] = max_prob
             old_sentences = new_sentences
-
-        # sort result
-        result = list(old_sentences.items())
-        result.sort(key=lambda r: r[1], reverse=True)
-        if DEBUG:
-            print(result)
-        if len(result) == 0:
-            print("[Error] Please check your input.")
-            return ''
-        return result[0][0]
+        return old_sentences
 
     def get_probability(self, w: str, w_prev: str, prev_py: list):
         ' Retrieve probability of P(w | w_prev) '

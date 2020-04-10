@@ -1,6 +1,7 @@
 import argparse
 from src.ngram import NGramModel
 from src.ngram_zhuyin import NGramPYModel
+from src.fenci_ngram import XNGramModel
 
 parser = argparse.ArgumentParser(description='Pinyin input with N-gram.')
 parser.add_argument('-f', '--fenci', dest='fenci', action='store_true',
@@ -38,7 +39,11 @@ if __name__ == '__main__':
             file_path=args.source,
             model_path=args.model)
     elif args.fenci:
-        model = None
+        model = XNGramModel(
+            n=args.n,
+            table_path='pinyin_table',
+            file_path=args.source,
+            model_path=args.model)
     else:
         model = NGramModel(
             n=args.n,
@@ -47,9 +52,9 @@ if __name__ == '__main__':
             model_path=args.model)
 
     if args.task == 'train':
-        model.train()
+        model.train([args.n-1])
     elif args.task == 'retrain':
-        model.train(force=True)
+        model.train(range(args.n))
     elif args.task == 'translate':
         if args.input is None:
             print('[Error] Missing input file.')
@@ -68,10 +73,16 @@ if __name__ == '__main__':
             exit(-1)
         model.load_model()
         lines = args.input.readlines()
-        result = [model.translate(l) for l in lines[0::2]]
+        # result = [model.translate(l) for l in lines[0::2]]
+        result = []
+        for l in lines[0::2]:
+            print(l)
+            result.append(model.translate(l))
+            print(result[-1])
         print("[Info] Results:")
         if args.output is None:
-            print(result)
+            for i, l, r, k in enumerate(zip(lines[0::2], result, lines[1::2])):
+                print(i, ':', l, r, k)
         else:
             args.output.writelines(result)
             print("[Info] Results saved to ", args.output.name)
