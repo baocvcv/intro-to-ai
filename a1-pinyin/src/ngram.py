@@ -105,6 +105,9 @@ class NGramModel(BaseModel):
 
         # print("华|新: ", conditional_pro[index['新xin']][self.all_words['华hua']])
         # print("新：", phrase_counter['新xin'])
+        print("索suo|搜sou: ", conditional_pro[index['搜sou']][self.all_words['索suo']])
+        print("搜：", phrase_counter['搜sou'])
+        print("薮：", phrase_counter['薮sou'])
 
         # calculate probability
         for phrase, idx in index.items(): # for each phrase
@@ -115,6 +118,7 @@ class NGramModel(BaseModel):
             lambdas.append(self.D_VALUE / cnt)
         print("[Info] Training finished!")
         # print("P(华hua|新xin): ", conditional_pro[index['新xin']][self.all_words['华hua']])
+        print("P(索suo|搜sou): ", conditional_pro[index['搜sou']][self.all_words['索suo']])
         print("[Info] Saving model...")
         self.save_model(index, 'index%d.p' % nn)
         self.save_model(lambdas, 'lambdas%d.p' % nn)
@@ -163,7 +167,7 @@ class NGramModel(BaseModel):
         for _len, syllable in enumerate(pinyin_input):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history
-            # print('[%d]: ' % _len, old_sentences)
+            print('[%d]: ' % _len, old_sentences)
             new_sentences = defaultdict(float)
             for w in self.pinyin_dict[syllable]:
                 best_sentence = ''
@@ -182,21 +186,25 @@ class NGramModel(BaseModel):
         # sort result
         result = list(old_sentences.items())
         result.sort(key=lambda r: r[1], reverse=True)
-        # print(result[:5])
+        print(result)
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
         return result[0][0]
 
+    # TODO: fix this
     def get_probability(self, w: str, w_prev: str, prev_py: list):
         ' Retrieve probability of P(w | w_prev) '
-        # print(w, w_prev, prev_py)
+        print(w, w_prev, prev_py)
         if w_prev == '':
             # the index for '' is 0
             idx_word = self.all_words[w]
+            print(w, idx_word)
             if idx_word in self.conditional_pro[0][0]:
+                print('pro', self.conditional_pro[0][0][idx_word])
                 return self.conditional_pro[0][0][idx_word]
             else:
+                print('lambda', self.lambdas[0][0])
                 return self.lambdas[0][0]
 
         l = len(w_prev)
