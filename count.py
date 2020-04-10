@@ -28,3 +28,14 @@ for fn in os.listdir('a1-pinyin/test_news/'):
     print(cnt)
     '''
 print(cnt)
+
+cnt = 0
+for line in content:
+    py = lazy_pinyin(line)
+    for i,w in enumerate(line):
+        if w == '新':
+            if py[i] == 'xin':
+                cnt += 1
+            else:
+                print(line, i, py[i])
+print(cnt)
