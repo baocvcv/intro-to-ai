@@ -5,7 +5,7 @@ import sys
 import json
 import multiprocessing
 
-from pypinyin import lazy_pinyin
+from pypinyin import lazy_pinyin, load_phrases_dict
 from jieba import lcut
 
 def process(fin: str, fout: str):
@@ -38,6 +38,11 @@ if __name__ == '__main__':
     if not os.path.exists(folder_out):
         os.makedirs(folder_out)
     
+    # pinyin dict
+    load_phrases_dict({'哪些': [['na3'], ['xi2e']],
+                        '哪个': [['na3'], ['ge4']]},
+                        style='tone2')
+
     args = []
     for fname in os.listdir(folder_in):
         if 'readme' in fname.lower():

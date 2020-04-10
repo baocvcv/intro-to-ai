@@ -1,14 +1,17 @@
 import argparse
 from src.ngram import NGramModel
+from src.ngram_zhuyin import NGramPYModel
 
 parser = argparse.ArgumentParser(description='Pinyin input with N-gram.')
 parser.add_argument('-f', '--fenci', dest='fenci', action='store_true',
                     help='N-gram on single character or phrase')
+parser.add_argument('-z', '--zhuyin', dest='zhuyin', action='store_true',
+                    help='To enable N-gram with zhuyin')
 parser.add_argument('-i', '--input', dest='input', type=argparse.FileType('r'),
                     metavar='FILE', help='Path to input pinyin file')
 parser.add_argument('-o', '--output', dest='output', type=argparse.FileType('w'),
                     metavar='FILE', help='Path to output file')
-parser.add_argument('-s', '--source', dest='source', type=str, default='sina_news',
+parser.add_argument('-s', '--source', dest='source', type=str, default='train',
                     metavar='FILEPATH', help='Path to training source file')
 parser.add_argument('-m', '--model', dest='model', type=str, default='src/models/n-gram',
                     metavar='FILEPATH', help='Path to model files')
@@ -28,11 +31,21 @@ def check_result(output: list, truth: list) -> float:
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    model = NGramModel(
-        n=args.n,
-        table_path='pinyin_table',
-        file_path=args.source,
-        model_path=args.model)
+    if args.zhuyin:
+        model = NGramPYModel(
+            n=args.n,
+            table_path='pinyin_table',
+            file_path=args.source,
+            model_path=args.model)
+    elif args.fenci:
+        model = None
+    else:
+        model = NGramModel(
+            n=args.n,
+            table_path='pinyin_table',
+            file_path=args.source,
+            model_path=args.model)
+
     if args.task == 'train':
         model.train()
     elif args.task == 'retrain':

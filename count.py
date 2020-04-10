@@ -4,15 +4,12 @@ import io
 from collections import Counter
 import os
 
-from pypinyin import lazy_pinyin
-
-punc = re.compile(r"[^\u4e00-\u9fff]+")
 cnt = Counter()
 for fn in os.listdir('a1-pinyin/test_news/'):
     lines = io.open('a1-pinyin/test_news/' + fn,
                     mode='r',
                     encoding='utf-8').readlines()
-    content = [punc.sub(' ', json.loads(line)['html']) for line in lines]
+    content = [json.loads(line)['text'] for line in lines]
 
     for line in content:
         cnt['薮'] += line.count('薮')
