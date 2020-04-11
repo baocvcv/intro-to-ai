@@ -7,16 +7,15 @@ from math import log
 from collections import defaultdict, Counter
 import time
 import re
+from operator import itemgetter
 
 import dill as pickle
 
 from .basemodel import BaseModel
+from .config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
 
 class NGramModel(BaseModel):
     ' The N-Gram model '
-    # use absolute discounting
-    D_VALUE = 0.75
-    # D_VALUE = 0.99
 
     def __init__(self,
                  n=2,
@@ -40,14 +39,13 @@ class NGramModel(BaseModel):
             print("[Info] Running with n = %d" % i)
             self.train_n(i)
         time_d = round(time.time()-time_d, 3)
-        print("[Info] Training took %ss" % (self.n, time_d))
+        print("[Info] Training took %ss" % time_d)
 
     def train_n(self, nn):
         ' Train '
         # nn is the length of the prefix
         # use 2-d dictionary to count the conditional probability
         # {'a': {'b': 0.1, 'c': 0.2, ...}
-        # conditional_pro = defaultdict(lambda: defaultdict(float))
         conditional_pro = []
         # lambdas used for discounting
         # {'a':0.1, 'b':0.2, ...}
@@ -58,7 +56,7 @@ class NGramModel(BaseModel):
         # loop through and count
         phrase_counter = Counter()
         for line in self.generate_data():
-            _len = len(line)
+            _len = len(line['text'])
             for i in range(_len-nn):
                 ' count number of different phrases '
                 p = line['text'][i : i+nn]
@@ -98,8 +96,8 @@ class NGramModel(BaseModel):
             cnt = phrase_counter[idx]
             cp = conditional_pro[idx]
             for w in cp: # each word
-                cp[w] = (cp[w]-self.D_VALUE) / cnt
-            lambdas.append(self.D_VALUE / cnt)
+                cp[w] = (cp[w]-D_VALUE) / cnt
+            lambdas.append(D_VALUE / cnt)
         print("[Info] Dict size: ", len(phrase_counter))
         print("[Info] Training finished!")
         # print("P(华|新): ", conditional_pro[index['新']][self.all_words['华']])
@@ -117,6 +115,10 @@ class NGramModel(BaseModel):
         print("[Info] Saved %s to " % name, self.model_dir)
 
     def load_model(self):
+        ' Load saved model '
+        self._load_model()
+
+    def _load_model(self):
         ' Load saved model '
         # word ngram
         self.lambdas = []
@@ -147,18 +149,20 @@ class NGramModel(BaseModel):
         result = self._translate(pinyin_input)
         # sort result
         result = list(result.items())
-        result.sort(key=lambda r: r[1], reverse=True)
+        result.sort(key=itemgetter(1), reverse=True)
         # print(result)
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
         return result[0][0]
 
-    def _translate(self, pinyin_input: str) -> str:
+    def _translate(self,
+                   pinyin_input: str,
+                   prior: dict = {'': 0}) -> str:
         ' Translate the input pinyin to words list '
         pinyin_input = re.split(r'\s+', pinyin_input.lower().strip())
 
-        old_sentences = {'': .0}
+        old_sentences = prior
         for _len, syllable in enumerate(pinyin_input):
             # For each pinyin, get candidate words
             # Calculate conditional probability, record history

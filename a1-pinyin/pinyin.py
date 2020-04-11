@@ -32,24 +32,26 @@ def check_result(output: list, truth: list) -> float:
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    if args.zhuyin:
-        model = NGramPYModel(
-            n=args.n,
-            table_path='pinyin_table',
-            file_path=args.source,
-            model_path=args.model)
-    elif args.fenci:
+    if args.fenci:
         model = XNGramModel(
             n=args.n,
             table_path='pinyin_table',
             file_path=args.source,
-            model_path=args.model)
+            model_path=args.model,
+            zhuyin=args.zhuyin)
     else:
-        model = NGramModel(
-            n=args.n,
-            table_path='pinyin_table',
-            file_path=args.source,
-            model_path=args.model)
+        if args.zhuyin:
+            model = NGramPYModel(
+                n=args.n,
+                table_path='pinyin_table',
+                file_path=args.source,
+                model_path=args.model)
+        else:
+            model = NGramModel(
+                n=args.n,
+                table_path='pinyin_table',
+                file_path=args.source,
+                model_path=args.model)
 
     if args.task == 'train':
         model.train([args.n-1])
@@ -63,7 +65,8 @@ if __name__ == '__main__':
         result = [model.translate(l) for l in args.input.readlines()]
         print("[Info] Translated %d lines." % len(result))
         if args.output is None:
-            print(result)
+            for l in result:
+                print(l)
         else:
             args.output.writelines(result)
             print("[Info] Results saved to ", args.output.name)
@@ -76,14 +79,11 @@ if __name__ == '__main__':
         # result = [model.translate(l) for l in lines[0::2]]
         result = []
         for l in lines[0::2]:
-            print(l)
+            print(l.strip())
             result.append(model.translate(l))
             print(result[-1])
         print("[Info] Results:")
-        if args.output is None:
-            for i, l, r, k in enumerate(zip(lines[0::2], result, lines[1::2])):
-                print(i, ':', l, r, k)
-        else:
+        if args.output is not None:
             args.output.writelines(result)
             print("[Info] Results saved to ", args.output.name)
         accuracy = check_result(result, lines[1::2])

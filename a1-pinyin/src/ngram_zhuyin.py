@@ -8,17 +8,17 @@ from collections import defaultdict, Counter, OrderedDict
 import time
 import re
 import io
+from operator import itemgetter
 
 import dill as pickle
 
 from .ngram import NGramModel
+from .config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
 
 DEBUG = False
 
 class NGramPYModel(NGramModel):
     ' The N-Gram model with zhuyin '
-    # use absolute discounting
-    D_VALUE = 0.75
 
     def __init__(self,
                  n=2,
@@ -49,7 +49,6 @@ class NGramPYModel(NGramModel):
         # nn is the length of the prefix
         # use 2-d dictionary to count the conditional probability
         # {'a': {'b': 0.1, 'c': 0.2, ...}
-        # conditional_pro = defaultdict(lambda: defaultdict(float))
         conditional_pro = []
         # lambdas used for discounting
         # {'a':0.1, 'b':0.2, ...}
@@ -62,10 +61,9 @@ class NGramPYModel(NGramModel):
         for line in self.generate_data():
             _len = len(line['text'])
             py_line = [line['text'][i]+py for i,py in enumerate(line['py'])]
-            get_line = lambda x,y: ''.join(py_line[x:y])
             for i in range(_len-nn):
                 ' count number of different phrases '
-                p = get_line(i, i+nn)
+                p = ''.join(py_line[i : i+nn])
                 phrase_counter[p] += 1
                 ' add to index '
                 idx = -1
@@ -77,15 +75,15 @@ class NGramPYModel(NGramModel):
 
                 ' count conditional occurrences '
                 idx_word = -1
-                word = get_line(i+nn, i+nn+1)
+                word = py_line[i+nn]
                 if word in self.all_words:
                     idx_word = self.all_words[word]
                 else:
                     idx_word = self.all_words[word] = len(self.all_words)
                 conditional_pro[idx][idx_word] += 1
             if _len-nn >= 0:
-                # p = line[_len-nn : _len]
-                phrase_counter[get_line(_len-nn, _len)] += 1
+                p = ''.join(py_line[_len-nn : _len])
+                phrase_counter[p] += 1
 
         if DEBUG and nn == 1: # debug
             # print("华|新: ", conditional_pro[index['新xin']][self.all_words['华hua']])
@@ -99,26 +97,45 @@ class NGramPYModel(NGramModel):
             cnt = phrase_counter[phrase]
             cp = conditional_pro[idx]
             for w in cp: # each word
-                cp[w] = (cp[w]-self.D_VALUE) / cnt
-            lambdas.append(self.D_VALUE / cnt)
+                cp[w] = (cp[w]-D_VALUE) / cnt
+            lambdas.append(D_VALUE / cnt)
         print("[Info] Training finished!")
         if DEBUG and nn == 1: # debug
             # print("P(华hua|新xin): ", conditional_pro[index['新xin']][self.all_words['华hua']])
             print("P(索suo|搜sou): ", conditional_pro[index['搜sou']][self.all_words['索suo']])
 
         print("[Info] Saving model...")
-        self.save_model(index, 'index%d.p' % nn)
-        self.save_model(lambdas, 'lambdas%d.p' % nn)
-        self.save_model(conditional_pro, 'prob%d.p' % nn)
+        self.save_model(index, 'zy_index%d.p' % nn)
+        self.save_model(lambdas, 'zy_lambdas%d.p' % nn)
+        self.save_model(conditional_pro, 'zy_prob%d.p' % nn)
         print("[Info] Model saved.")
         gc.collect()
 
+    def load_model(self):
+        ' Load saved model '
+        self._load_zymodel()
+
+    def _load_zymodel(self):
+        ' Load saved model '
+        # word ngram
+        self.lambdas = []
+        self.conditional_pro = []
+        self.index = []
+        for i in range(self.n):
+            self.conditional_pro.append(pickle.load(
+                open(join(self.model_dir, 'zy_prob%d.p' % i), 'rb')))
+            self.lambdas.append(pickle.load(
+                open(join(self.model_dir, 'zy_lambdas%d.p' % i), 'rb')))
+            self.index.append(pickle.load(
+                open(join(self.model_dir, 'zy_index%d.p' % i), 'rb')))
+        print("[Info] Loaded model from ", self.model_dir)
+
     def translate(self, pinyin_input: str) -> str:
         ' Translate the input pinyin to words '
-        result = self._translate(pinyin_input)
+        result = self._zy_translate(pinyin_input)
         # sort result
         result = list(result.items())
-        result.sort(key=lambda r: r[1], reverse=True)
+        result.sort(key=itemgetter(1), reverse=True)
         if DEBUG:
             print(result)
         if len(result) == 0:
@@ -126,9 +143,9 @@ class NGramPYModel(NGramModel):
             return ''
         return result[0][0]
 
-    def _translate(self,
-                   pinyin_input: str,
-                   prior: dict = {'': .0}) -> dict:
+    def _zy_translate(self,
+                      pinyin_input: str,
+                      prior: dict = {'': .0}) -> dict:
         ' Translate the input pinyin to words '
         pinyin_input = pinyin_input.lower().strip()
         pinyin_input = re.split(r'\s+', pinyin_input)

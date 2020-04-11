@@ -7,12 +7,12 @@ from math import log
 from collections import defaultdict, Counter, OrderedDict
 import time
 import re
+import multiprocessing
 
 import dill as pickle
 
 from .ngram_zhuyin import NGramPYModel
-
-DEBUG = False
+from .config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
 
 class XNGramModel(NGramPYModel):
     ' N-gram model with Jieba '
@@ -21,9 +21,11 @@ class XNGramModel(NGramPYModel):
                  n=2,
                  table_path='../pinyin_table',
                  file_path='',
-                 model_path='models/n-gram'):
+                 model_path='models/n-gram',
+                 zhuyin=False):
         ' Constructor '
         super().__init__(n, table_path, file_path, model_path)
+        self.zhuyin = zhuyin
 
     def train(self, force=False):
         ' Train '
@@ -33,7 +35,7 @@ class XNGramModel(NGramPYModel):
         time_d = time.time()
         self.train_jieba()
         time_d = round(time.time()-time_d, 3)
-        print("[Info] Training took %ss" % (self.n, time_d))
+        print("[Info] Training took %ss" % time_d)
 
     def train_jieba(self):
         ' Train the 2-gram model with jieba '
@@ -94,8 +96,8 @@ class XNGramModel(NGramPYModel):
             cnt = phrase_freq[idx]
             cp = conditional_pro[idx]
             for w in cp:
-                cp[w] = (cp[w] - self.D_VALUE) / cnt
-            lambdas.append(self.D_VALUE / cnt)
+                cp[w] = (cp[w] - D_VALUE) / cnt
+            lambdas.append(D_VALUE / cnt)
             phrase_freq[idx] /= total_phrase_cnt
         print("[Info] Training finished!")
         print("[Info] Saving model...")
@@ -120,33 +122,54 @@ class XNGramModel(NGramPYModel):
             open(join(self.model_dir, 'jieba_freq.p'), 'rb'))
         self.jieba_dict = pickle.load(
             open(join(self.model_dir, 'jieba_dict.p'), 'rb'))
-        super().load_model()
+        if self.zhuyin:
+            self._load_zymodel()
+        else:
+            self._load_model()
  
     def translate(self, pinyin_input: str) -> str:
         ' Translate '
         time_d = time.time()
-        result = self._translate(pinyin_input)
+        result = self._fc_translate(pinyin_input)
         time_d = round(time.time()-time_d, 5)
-        print("Used %fs", time_d)
-        # sort result
-        # result = [(s, result[s][0]) for s in result]
-        # result.sort(key=lambda r: r[1], reverse=True)
-        # print(result)
+        print("Used %fs" % time_d)
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
         return result
 
-    def _translate(self, pinyin_input: str) -> str:
+    # TODO: add a multi-processing module
+    def _fc_translate(self, pinyin_input: str) -> str:
         ' Translate '
         pinyin_input = pinyin_input.lower().strip()
-        pinyin_input = re.split(r'\s+', pinyin_input)
-        splits = self.cut_n(len(pinyin_input))
+        self.pinyin_input = re.split(r'\s+', pinyin_input)
+        splits = self.cut_n(len(self.pinyin_input))
+        if len(self.pinyin_input) < 10:
+            return self._fc_do_translate(splits)[0]
+        else:
+            args = []
+            l = len(splits)
+            chunksize = int(l / MAX_PROCESS_NUM)
+            remainder = l % MAX_PROCESS_NUM
+            for i in range(0, remainder*chunksize, chunksize+1):
+                args.append(splits[i : i+1+chunksize])
+            for i in range(remainder*(chunksize+1), l, chunksize):
+                args.append(splits[i : i+chunksize])
+            with multiprocessing.Pool(MAX_PROCESS_NUM) as pool:
+                res = pool.map(self._fc_do_translate, args)
+            best_sentence = ''
+            max_prob = float('-inf')
+            for r in res:
+                if r[1] > max_prob:
+                    max_prob = r[1]
+                    best_sentence = r[0]
+            return best_sentence
 
+    def _fc_do_translate(self, splits: list):
         all_best_sentence = ''
         all_max_prob = float('-inf')
         for split in splits:
-            input_split = [' '.join(pinyin_input[split[i-1] : split[i]]) for i in range(1, len(split))]
+            input_split = [' '.join(self.pinyin_input[split[i-1] : split[i]]) for i in range(1, len(split))]
             if DEBUG:
                 print("Work on split: ", input_split)
 
@@ -172,10 +195,16 @@ class XNGramModel(NGramPYModel):
                         new_sentences[best_sentence] = (max_prob, best_fenci)
                 if phrase_py not in self.jieba_dict or new_phrase_len == 1:
                     # update sentence using n-gram
+                    # parse old_sentences to the format used by word-based ngram model
                     simple_os = {}
                     for s, tup in old_sentences.items():
                         simple_os[s] = tup[0]
-                    simple_ns = super()._translate(phrase_py, simple_os)
+                    # send data to be processed
+                    if self.zhuyin:
+                        simple_ns = self._zy_translate(phrase_py, simple_os)
+                    else:
+                        simple_ns = self._translate(phrase_py, simple_os)
+                    # parse back
                     for s, p in simple_ns.items():
                         os = s[:-new_phrase_len]
                         if s not in new_sentences:
@@ -189,7 +218,7 @@ class XNGramModel(NGramPYModel):
             if best[0][1][0] > all_max_prob:
                 (all_best_sentence, all_max_prob) = (best[0][0], best[0][1][0])
 
-        return all_best_sentence
+        return (all_best_sentence, all_max_prob)
             
     def get_probability_jb(self, p: str, p_prev: str):
         ' Return P(w | w_prev) '
@@ -212,7 +241,7 @@ class XNGramModel(NGramPYModel):
             new_tmp = []
             for l in tmp:
                 cur_sum = l[-1]
-                pos_max = min(input_len+1, cur_sum+7)
+                pos_max = min(input_len+1, cur_sum+1+MAX_PHRASE_LEN)
                 for t in range(cur_sum + 1, pos_max):
                     if t < input_len:
                         new_tmp.append(l + [t])
