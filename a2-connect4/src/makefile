@@ -2,9 +2,9 @@
 all: compete strategy
 
 test:
-	Compete/Compete so/Strategy.so TestCases/20.so result 1
+	Compete/Compete so/Strategy.so TestCases/80.so result 2
 test_debug:
-	Compete/Compete so/Strategy.so.d TestCases/20.so result 1
+	Compete/Compete so/Strategy.so.d TestCases/40.so result 1
 
 compete:
 	$(MAKE) -C Compete
