@@ -21,6 +21,9 @@ public:
                          int M, int N, const MyPoint& cur_move, const int* old_top,
                          const int color);
 
+    // TODO: use noX, noY
+    // TODO: fine tune c
+    // TODO: better strategy
     // add node child to the list of children
     void expand(int this_idx, int child_idx, Node& child);
     // return global index of the best child

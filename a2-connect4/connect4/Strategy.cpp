@@ -74,8 +74,7 @@ extern "C" Point *getPoint(const int M, const int N, const int *top, const int *
 	}
 
 	#ifndef DEBUG
-	clock_t time1 = clock();
-	int time_d = 1000 * (time1 - time0) / CLOCKS_PER_SEC;
+	int time_d = 1000 * (clock() - time0) / CLOCKS_PER_SEC;
 	while (time_d < 2800) {
 	#else
 	int time_d = 1;
@@ -92,7 +91,7 @@ extern "C" Point *getPoint(const int M, const int N, const int *top, const int *
 		// }
 
 		#ifndef DEBUG
-		time_d = 1000 * (time1 - time0) / CLOCKS_PER_SEC;
+		time_d = 1000 * (clock() - time0) / CLOCKS_PER_SEC;
 		#else
 		time_d++;
 		#endif
