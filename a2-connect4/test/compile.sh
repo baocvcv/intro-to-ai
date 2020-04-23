@@ -1,4 +1,4 @@
-root_dir="/work/zhangjunqi/ConnectFour/"  #your path here
+root_dir="/home/fred/Dev/intro-to-ai/a2-connect4/test/"  #your path here
 for file in `ls "${root_dir}Sourcecode"`
 do
     cd "${root_dir}Sourcecode/${file}"

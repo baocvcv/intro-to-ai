@@ -8,16 +8,18 @@ using namespace std;
 
 void Node::init (
         int p, const int s[MAX_BOARD_SIZE][MAX_BOARD_SIZE],
-        int M, int N, const MyPoint& cur_move, const int* top, const int color) {
+        int M, int N, const MyPoint& cur_move, const int* top, const int color,
+        const int noX, const int noY) {
     this->parent = p;
     this->a = cur_move;
     this->color = color;
+    this->noX = noX, this->noY = noY;
     nrow = M, ncol = N;
     for (int j = 0; j < ncol; j++) {
         for (int i = 0; i < nrow; i++)
             (this->s)[i][j] = s[i][j]; // copy over the current board
         (this->top)[j] = top[j];
-        if (top[j] > 0) {
+        if (next_top(j) >= 0) {
             children[j] = -1; // set to available
             max_child_num++;
         } else {
@@ -29,11 +31,12 @@ void Node::init (
 
 void Node::init_with_move (
         int p, const int old_s[MAX_BOARD_SIZE][MAX_BOARD_SIZE],
-        int M, int N, const MyPoint& cur_move, const int* old_top, const int color) {
-    init(p, old_s, M, N, cur_move, old_top, color);
+        int M, int N, const MyPoint& cur_move, const int* old_top, const int color,
+        const int noX, const int noY) {
+    init(p, old_s, M, N, cur_move, old_top, color, noX, noY);
     (this->s)[a.first][a.second] = color;
-    (this->top)[a.second]--;
-    if ((this->top)[a.second] == 0) {
+    (this->top)[a.second] = a.first; // make the move
+    if (next_top(a.second) < 0) {
         max_child_num--;
         children[a.second] = -2;
     }
@@ -51,11 +54,13 @@ void Node::expand(int this_idx, int child_idx, Node& child) {
                 children[i] = child_idx;
                 break;
             }
-    child.init_with_move(this_idx, s, nrow, ncol, {top[i]-1, i}, top, flip(color));
+    child.init_with_move(this_idx, s, nrow, ncol, {next_top(i), i},
+                         top, flip(color), noX, noY);
     child_num++;
     if (child_num >= max_child_num) type = -3;
 }
 
+//TODO: how does nox, noy affect marking and evaluating?
 const int Node::dirx[8] = {0, 0,-1, 1, 1,-1, 1, 0};
 const int Node::diry[8] = {0,-1,-1,-1, 0, 1, 1, 1};
 void Node::mark_location(int s_cur[][12][8], int x, int y) {
@@ -95,7 +100,7 @@ void Node::evaluate_strength(int s_cur[][12][8], int top_cur[][2], int turn, int
             }
         }
     }
-    for (int dir = 1; dir < 3; dir++) { // for each pair of dirs
+    for (int dir = 1; dir < 4; dir++) { // for each pair of dirs
         int x1 = x + dirx[dir], y1 = y + diry[dir];
         int x2 = x + dirx[8-dir], y2 = y + diry[8-dir];
         bool in_range1 = 0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol;
@@ -134,14 +139,14 @@ int Node::defaultPolicy() {
 
     // mark the map
     for (int y = 0; y < ncol; y++) {
-        if (top_cur[y][0] == 0) continue;
-        int x = top_cur[y][0] - 1;
+        if (next_top(top_cur, y) < 0) continue;
+        int x = next_top(top_cur, y);
         mark_location(s_cur, x, y);
         evaluate_strength(s_cur, top_cur, turn, x, y);
     }
     // check for forcing moves
     for (int i = 0; i < ncol; i++) {
-        if (top_cur[i][0] == 0) continue;
+        if (next_top(top_cur, i) < 0) continue;
         if (top_cur[i][1] == 3) { // winnable
             type = -1, the_move = i;
             break;
@@ -152,7 +157,7 @@ int Node::defaultPolicy() {
 
     auto is_draw = [&] {
         for (int i = 0; i < ncol; i++)
-            if (top_cur[i][0] > 0)
+            if (next_top(top_cur, i) >= 0)
                 return false;
         return true;
     };
@@ -168,7 +173,7 @@ int Node::defaultPolicy() {
         bool has_forcing_moves = false;
         bool has_good_moves = false;
         for (int i = 0; i < ncol; i++) { // check for forcing moves
-            if (top_cur[i][0] == 0) continue;
+            if (next_top(top_cur, i) < 0) continue;
             if (top_cur[i][1] == 3) { // winnable
                 is_ended = true;
                 has_forcing_moves = true, y = i;
@@ -179,7 +184,7 @@ int Node::defaultPolicy() {
         }
         if (!has_forcing_moves) {
             for (int i = 0; i < ncol; i++) { // check for good moves
-                if (top_cur[i][0] > 0 && top_cur[i][1] > 0) {
+                if (next_top(top_cur, i) >= 0 && top_cur[i][1] > 0) {
                     has_good_moves = true;
                     break;
                 }
@@ -188,11 +193,11 @@ int Node::defaultPolicy() {
             int level = has_good_moves ? 1 : 0;
             while (true) { // generate legal move
                 y = rand() % ncol;
-                if (top_cur[y][0] > 0 && top_cur[y][1] == level)
+                if (next_top(top_cur, y) >= 0 && top_cur[y][1] == level)
                     break;
             }
         }
-        top_cur[y][0]--;
+        top_cur[y][0] = next_top(top_cur, y);
         s_cur[top_cur[y][0]][y][0] = turn; // make move
         turn = flip(turn);
 
@@ -200,7 +205,7 @@ int Node::defaultPolicy() {
         if (!is_ended) {
             for (int y_tmp = 0; y_tmp < ncol; y_tmp++) {
                 if (top_cur[y_tmp][0] == 0) continue; // column full
-                int x = top_cur[y_tmp][0] - 1;
+                int x = next_top(top_cur, y_tmp);
                 // only recalculate the candidate moves that are on the same line
                 // as the new move and has a distance of less than 4
                 // int distX = abs(top_cur[y][0] - x), distY = abs(y - y_tmp);
@@ -228,4 +233,14 @@ int Node::defaultPolicy() {
         return 2;
     else
         return 0;
+}
+
+inline int Node::next_top(int y) {
+    if (y == noY && top[y]-1 == noX) return noX - 1;
+    else return top[y] - 1;
+}
+
+inline int Node::next_top(int top_cur[][2], int y) {
+    if (y == noY && top_cur[y][0]-1 == noX) return noX - 1;
+    else return top_cur[y][0] - 1;
 }

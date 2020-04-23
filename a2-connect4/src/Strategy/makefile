@@ -11,4 +11,4 @@ clean:
 	rm -f $(objects)
 
 test: Strategy.cpp test.cpp Node.cpp
-	g++ -Wall -std=c++11 -O0 -DDEBUG -fpic -g Judge.cpp Strategy.cpp Node.cpp test.cpp -o test
+	g++ -Wall -std=c++11 -O0 -DDEBUG2 -fpic -g Judge.cpp Strategy.cpp Node.cpp test.cpp -o test

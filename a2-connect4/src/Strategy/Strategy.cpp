@@ -15,10 +15,14 @@ const int MAX_TREE_SIZE = 800000;
 int M, N;
 // int **board;
 
-int tree_policy(unique_ptr<Node[]>& nodes, int& node_cnt);
+// see @best_child
+int tree_policy(unique_ptr<Node[]>& nodes, int& node_cnt, bool use_val);
 void backup(unique_ptr<Node[]>& nodes, int gain, int idx);
 // Returns the local index of the best child of nodes[idx]
-int best_child(unique_ptr<Node[]>& nodes, int idx);
+// if use_val, use (winrate + c * confidence); else use winrate only
+int best_child(unique_ptr<Node[]>& nodes, int idx, bool use_val);
+// obtain move
+int get_move(unique_ptr<Node[]>& nodes);
 
 /*
 	策略函数接口,该函数被对抗平台调用,每次传入当前状态,要求输出你的落子点,该落子点必须是一个符合游戏规则的落子点,不然对抗平台会直接认为你的程序有误
@@ -52,10 +56,14 @@ extern "C" Point *getPoint(const int M, const int N, const int *top, const int *
 		for (int j = 0; j < N; j++)
 			board[i][j] = _board[i * N + j];
 
-	#ifdef DEBUG
+	#if defined(DEBUG) || defined(DEBUG2)
 	cerr << "Current board:\n";
-	for (int i = 0; i < M * N; i++)
-		cerr << _board[i] << ((i+1) % N == 0 ? '\n' : ' ');
+	for (int i = 0; i < M * N; i++) {
+		if (i == noX*N+noY) cerr << '*';
+		else if (_board[i] == 0) cerr << '-';
+		else  cerr << _board[i];
+		cerr << ((i+1) % N == 0 ? '\n' : ' ');
+	}
 	cerr << "Top: ";
 	for (int i = 0; i < N; i++)
 		cerr << top[i] << ' ';
@@ -66,38 +74,43 @@ extern "C" Point *getPoint(const int M, const int N, const int *top, const int *
 	unique_ptr<Node[]> nodes(new Node[MAX_TREE_SIZE]);
 	int node_cnt = 1;
 	// init root node
-	nodes[0].init(-1, board, M, N, MyPoint(lastX, lastY), top, 1);
+	nodes[0].init(-1, board, M, N, MyPoint(lastX, lastY), top, 1, noX, noY);
 	backup(nodes, nodes[0].defaultPolicy(), 0);
 	if (nodes[0].is_leaf()) {
 		int y = nodes[0].the_move;
 		return new Point(top[y]-1, y);
 	}
 
-	#ifndef DEBUG
+	#ifndef DEBUG2
 	int time_d = 1000 * (clock() - time0) / CLOCKS_PER_SEC;
 	while (time_d < 2800) {
 	#else
-	int time_d = 1;
-	while (time_d < 10000) {
+	float time_d = 1;
+	while (time_d < 2800) {
 	#endif
 		// select new node
-		int child_idx = tree_policy(nodes, node_cnt);
+		//TODO: variable time_d cut-off ?
+		// higher at the beginning of the game, lower towards the end
+		int child_idx = tree_policy(nodes, node_cnt, time_d<2000);
 		// simulate & backup
-		// for (int i = 0; i < 10; i++) {
-			int result;
+		// TODO: how many times is better?
+		int result;
+		for (int i = 0; i < 5; i++) {
 			if (child_idx == -1) result = 2;
 			else result = nodes[child_idx].defaultPolicy();
 			backup(nodes, result, child_idx);
-		// }
+		}
 
-		#ifndef DEBUG
+		#ifndef DEBUG2
 		time_d = 1000 * (clock() - time0) / CLOCKS_PER_SEC;
 		#else
-		time_d++;
+		time_d += 0.2;
 		#endif
 	}
-	int y = best_child(nodes, 0);
-	#ifdef DEBUG
+
+	// int y = get_move(nodes);
+	int y = best_child(nodes, 0, false);
+	#if defined(DEBUG) || defined(DEBUG2)
 	int n = nodes[0].N;
 	for (int i = 0; i < N; i++) {
 		if (nodes[0].children[i] > 0) {
@@ -118,7 +131,7 @@ extern "C" Point *getPoint(const int M, const int N, const int *top, const int *
 /*
 	treePolicy + expand
 */
-int tree_policy(unique_ptr<Node[]>& nodes, int& node_cnt) {
+int tree_policy(unique_ptr<Node[]>& nodes, int& node_cnt, bool use_val) {
 	int idx = 0;
 	while (!nodes[idx].is_leaf()) {
 		int expandable = nodes[idx].expandable();
@@ -131,7 +144,7 @@ int tree_policy(unique_ptr<Node[]>& nodes, int& node_cnt) {
 				abort();
 			}
 		else if (expandable == -3) // full
-			idx = nodes[idx].children[best_child(nodes, idx)];
+			idx = nodes[idx].children[best_child(nodes, idx, use_val)];
 		else if (expandable == -1) // winnable by next move
 			return -1;
 	}
@@ -146,16 +159,17 @@ void backup(unique_ptr<Node[]>& nodes, int gain, int idx) {
 	}
 }
 
-int best_child(unique_ptr<Node[]>& nodes, int idx) {
+int best_child(unique_ptr<Node[]>& nodes, int idx, bool use_val) {
 	if (nodes[idx].is_leaf()) return nodes[idx].the_move;
-
 	// calc best child
 	int best_child = -1;
-	double best_val = .0;
+	double best_val = -1.0;
 	int* children = nodes[idx].children;
 	for (int i = 0; i < N; i++) {
 		if (children[i] > 0) {
-			double val = nodes[children[i]].calc_value(nodes[idx].N);
+			double val;
+			if (use_val) val = nodes[children[i]].calc_value(nodes[idx].N);
+			else val = nodes[children[i]].calc_win_rate();
 			if (val > best_val) {
 				best_val = val;
 				best_child = i;
@@ -163,6 +177,28 @@ int best_child(unique_ptr<Node[]>& nodes, int idx) {
 		}
 	}
 	return best_child;
+}
+
+int get_move(unique_ptr<Node[]>& nodes) {
+	if (nodes[0].is_leaf()) return nodes[0].the_move;
+
+	int most_sim_c = -1; int most_sim_n = 0;
+	int high_win_c = -1; double high_win_r = .0;
+	int high_val_c = -1; double high_val = .0;
+	int* children = nodes[0].children;
+	for (int i = 0; i < N; i++) {
+		if (children[i] > 0) {
+			double win_rate = nodes[children[i]].calc_win_rate();
+			int sim_num = nodes[children[i]].N;
+			double val = nodes[children[i]].calc_value(nodes[0].N);
+
+			if (win_rate > high_win_r) high_win_r = win_rate, high_win_c = i;
+			if (sim_num > most_sim_n) most_sim_n = sim_num, most_sim_c = i;
+			if (val > high_val) high_val = val, high_val_c = i;
+		}
+	}
+	if (high_win_c == most_sim_c) return most_sim_c;
+	else return high_val_c;
 }
 
 /*
