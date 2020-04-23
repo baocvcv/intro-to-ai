@@ -14,7 +14,7 @@ import json
 class BaseModel:
     ' Base class for all models  '
 
-    def __init__(self, table_path='../pinyin_table', file_path=''):
+    def __init__(self, table_path='pinyin_table', file_path=''):
         ' Constructor '
         # text file path
         self.file_path = file_path

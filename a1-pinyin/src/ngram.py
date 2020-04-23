@@ -11,15 +11,15 @@ from operator import itemgetter
 
 import dill as pickle
 
-from .basemodel import BaseModel
-from .config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
+from basemodel import BaseModel
+from config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
 
 class NGramModel(BaseModel):
     ' The N-Gram model '
 
     def __init__(self,
                  n=2,
-                 table_path='../pinyin_table',
+                 table_path='pinyin_table',
                  file_path='',
                  model_path='models/n-gram'):
         ' Constructor '
@@ -120,6 +120,7 @@ class NGramModel(BaseModel):
 
     def _load_model(self):
         ' Load saved model '
+        print("[Info] Loading model...")
         # word ngram
         self.lambdas = []
         self.conditional_pro = []
@@ -198,6 +199,6 @@ class NGramModel(BaseModel):
             idx_word = self.all_words[w]
             p1 = self.conditional_pro[l][idx][idx_word]
             p2 = self.get_probability(w, w_prev[1:])
-            return p1 + self.lambdas[l][idx] * p2
+            return p1 + self.lambdas[l][idx] * p2 * len(self.conditional_pro[l][idx])
         else:
             return self.get_probability(w, w_prev[1:])

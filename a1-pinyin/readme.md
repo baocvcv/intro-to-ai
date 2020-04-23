@@ -1,31 +1,13 @@
-# Models
-
-### 简单二元模型
-
-- process every sentence
-
-  - calculate $P(w_i | w_{i-1})$ for every word
-  - calculate the frequency of every word, $P(w_i)$
-
-- Given a sequence of pinyin, i.e. O, need to find X, s.t. $P(X|O)$ is max
-  $$
-  P(X|O) = P(w_i|w_{i-1}O))*P(w_{i-2}|w_{i-1}O)...P(w_1|O)
-  $$
-
-- Use viterbi to find the best X
-
-
-
-# Framework
-
-- Should allow different methods to compute the model, i.e. models should have the same interfaces
-- Modules:
-  
-  - Model interface
-    - train(filename: str)
-    - translate(input: str) -> str
-  
-  - Pipeline
-    - Call model.train on data file
-    - Call translate for all input strs
-    - Calculate error rate
+## Usage
+- 请先从[这里](https://cloud.tsinghua.edu.cn/f/a96d2678a908451d9163/?dl=1)下载模型文件并解压到`src`文件夹下，完成后目录结构应为`src/models/n-gram/*.p`
+- 请安装requirements.txt中列举的依赖项
+  - dill
+  - jieba
+  - pypinyin
+  - console-progressbar
+- 进入src文件夹，输入`python pinyin.py -h`获取完整命令列表
+- 翻译功能：在src文件夹中，输入`python pinyin.py -i ../data/input.txt -o ../data/output.txt translate`使用3元注音字模型进行翻译
+- 模型选择：
+  - 在src文件夹中，输入`python pinyin.py -i [file] -o [file] -f translate`，使用2元词模型+3元多音字模型进行翻译
+  - 在src文件夹中，输入`python pinyin.py -i [file] -o [file] -f -n 2 translate`，使用2元词模型+2元多音字模型进行翻译
+- 交互模式：在src文件夹中，输入`python pinyin.py console`进入命令行翻译模式

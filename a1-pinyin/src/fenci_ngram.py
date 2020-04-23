@@ -11,15 +11,16 @@ import multiprocessing
 
 import dill as pickle
 
-from .ngram_zhuyin import NGramPYModel
-from .config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
+from ngram_zhuyin import NGramPYModel
+from config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
 
 class XNGramModel(NGramPYModel):
     ' N-gram model with Jieba '
+    LAMBDA = 0.9
 
     def __init__(self,
                  n=2,
-                 table_path='../pinyin_table',
+                 table_path='pinyin_table',
                  file_path='',
                  model_path='models/n-gram',
                  zhuyin=False):
@@ -64,6 +65,7 @@ class XNGramModel(NGramPYModel):
                 conditional_pro.append(defaultdict(float))
                 phrase_freq.append(1)
                 phrase_dict[py].append(p)
+                lambdas.append(0)
             return idx
 
         for line in self.generate_data():
@@ -89,28 +91,61 @@ class XNGramModel(NGramPYModel):
                     max_len = len(p)
                     max_p = p
             # TODO: count sentence stop sign
-        print("[Info] Max phrase length: ", max_len, max_p)
+        # print("[Info] Max phrase length: ", max_len, max_p)
+        # some statistics
+        # print("total phrase cnt =", total_phrase_cnt)
+        # print('no of different phrases =', len(index))
+        # f_out = open('rare_words.txt', 'w')
+        # cnt = [0] * 6
+        # for p, idx in index.items():
+        #     cnt_p = phrase_freq[idx]
+        #     if cnt_p >= 100:
+        #         cnt[5] += 1
+        #     else:
+        #         cnt[int(cnt_p / 20)] += 1
+        #     if cnt_p < 20:
+        #         f_out.write(p + '\n')
+        # f_out.close()
+        # for i in range(5):
+        #     print('[%d-%d]:' % (i*20, i*20+20), cnt[i])
+        # print('[100-]', cnt[5])
+        # return
+        
+        # filter out some words
+        new_index = {}
+        new_phrase_dict = defaultdict(list)
+        valid_idx_set = set()
+        for py, phrases in phrase_dict.items():
+            for p in phrases:
+                idx = index[p]
+                if phrase_freq[idx] >= 40 or len(p) >= 4:
+                    new_index[p] = idx
+                    new_phrase_dict[py].append(p)
+                    valid_idx_set.add(idx)
+                else:
+                    total_phrase_cnt -= phrase_freq[idx]
 
         # calc probability
-        for p, idx in index.items():
+        for p, idx in new_index.items():
             cnt = phrase_freq[idx]
             cp = conditional_pro[idx]
             for w in cp:
                 cp[w] = (cp[w] - D_VALUE) / cnt
-            lambdas.append(D_VALUE / cnt)
+            lambdas[idx] = D_VALUE / cnt
             phrase_freq[idx] /= total_phrase_cnt
         print("[Info] Training finished!")
         print("[Info] Saving model...")
-        self.save_model(index, 'jieba_index.p')
+        self.save_model(new_index, 'jieba_index.p')
         self.save_model(phrase_freq, 'jieba_freq.p')
         self.save_model(lambdas, 'jieba_lambdas.p')
-        self.save_model(phrase_dict, 'jieba_dict.p')
+        self.save_model(new_phrase_dict, 'jieba_dict.p')
         self.save_model(conditional_pro, 'jieba_prob.p')
         print("[Info] Model saved.")
         gc.collect()
 
     def load_model(self):
         ' Load saved model '
+        print("[Info] Loading model...")
         # jieba
         self.jieba_prob = pickle.load(
             open(join(self.model_dir, 'jieba_prob.p'), 'rb'))
@@ -129,22 +164,18 @@ class XNGramModel(NGramPYModel):
  
     def translate(self, pinyin_input: str) -> str:
         ' Translate '
-        time_d = time.time()
         result = self._fc_translate(pinyin_input)
-        time_d = round(time.time()-time_d, 5)
-        print("Used %fs" % time_d)
         if len(result) == 0:
             print("[Error] Please check your input.")
             return ''
         return result
 
-    # TODO: add a multi-processing module
     def _fc_translate(self, pinyin_input: str) -> str:
         ' Translate '
         pinyin_input = pinyin_input.lower().strip()
         self.pinyin_input = re.split(r'\s+', pinyin_input)
         splits = self.cut_n(len(self.pinyin_input))
-        if len(self.pinyin_input) < 10:
+        if len(self.pinyin_input) < 30:
             return self._fc_do_translate(splits)[0]
         else:
             args = []
@@ -181,6 +212,8 @@ class XNGramModel(NGramPYModel):
                 new_sentences = {}
                 if phrase_py in self.jieba_dict:
                     # update sentence using jieba
+                    if DEBUG:
+                        print('--- Using jieba ---')
                     for p in self.jieba_dict[phrase_py]:
                         best_sentence = ''
                         best_fenci = []
@@ -196,6 +229,8 @@ class XNGramModel(NGramPYModel):
                 if phrase_py not in self.jieba_dict or new_phrase_len == 1:
                     # update sentence using n-gram
                     # parse old_sentences to the format used by word-based ngram model
+                    if DEBUG:
+                        print('--- Using n-gram ---')
                     simple_os = {}
                     for s, tup in old_sentences.items():
                         simple_os[s] = tup[0]
@@ -208,7 +243,9 @@ class XNGramModel(NGramPYModel):
                     for s, p in simple_ns.items():
                         os = s[:-new_phrase_len]
                         if s not in new_sentences:
-                            new_sentences[s] = (p, old_sentences[os][1]+[s[-new_phrase_len:]])
+                            p_old = old_sentences[os][0]
+                            p_new = p_old + (p - p_old) * self.LAMBDA
+                            new_sentences[s] = (p_new, old_sentences[os][1]+[s[-new_phrase_len:]])
                 old_sentences = new_sentences
             
             if DEBUG:
@@ -217,13 +254,15 @@ class XNGramModel(NGramPYModel):
             best.sort(key=lambda r: r[1][0], reverse=True)
             if best[0][1][0] > all_max_prob:
                 (all_best_sentence, all_max_prob) = (best[0][0], best[0][1][0])
+                if DEBUG:
+                    print('[BEST!!]', all_best_sentence, all_max_prob)
 
         return (all_best_sentence, all_max_prob)
             
     def get_probability_jb(self, p: str, p_prev: str):
         ' Return P(w | w_prev) '
-        if DEBUG:
-            print("Get prob: ", p, p_prev)
+        # if DEBUG:
+            # print("Get prob: ", p, p_prev)
         idx = self.jieba_index[p]
         if p_prev == '' or p_prev not in self.jieba_index:
             return self.jieba_freq[idx]
@@ -231,7 +270,7 @@ class XNGramModel(NGramPYModel):
         idx_prev = self.jieba_index[p_prev]
         p1 = self.jieba_prob[idx_prev][idx]
         p2 = self.jieba_freq[idx]
-        return p1 + self.jieba_lambdas[idx] * p2
+        return p1 + self.jieba_lambdas[idx] * p2 * len(self.jieba_prob[idx_prev])
 
     def cut_n(self, input_len):
         ' Cut input to various length segments '

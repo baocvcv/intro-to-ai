@@ -12,8 +12,8 @@ from operator import itemgetter
 
 import dill as pickle
 
-from .ngram import NGramModel
-from .config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
+from ngram import NGramModel
+from config import DEBUG, D_VALUE, MAX_PHRASE_LEN, MAX_PROCESS_NUM
 
 DEBUG = False
 
@@ -22,7 +22,7 @@ class NGramPYModel(NGramModel):
 
     def __init__(self,
                  n=2,
-                 table_path='../pinyin_table',
+                 table_path='pinyin_table',
                  file_path='',
                  model_path='models/n-gram'):
         ' Constructor '
@@ -113,6 +113,7 @@ class NGramPYModel(NGramModel):
 
     def load_model(self):
         ' Load saved model '
+        print("[Info] Loading model...")
         self._load_zymodel()
 
     def _load_zymodel(self):
@@ -195,6 +196,6 @@ class NGramPYModel(NGramModel):
             idx_word = self.all_words[w]
             p1 = self.conditional_pro[l][idx][idx_word]
             p2 = self.get_probability(w, w_prev[1:], prev_py[1:])
-            return p1 + self.lambdas[l][idx] * p2
+            return p1 + self.lambdas[l][idx] * p2 * len(self.conditional_pro[l][idx])
         else:
             return self.get_probability(w, w_prev[1:], prev_py[1:])
