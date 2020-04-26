@@ -9,7 +9,6 @@
 #define STRATEGY_H_
 
 #include "Point.h"
-#include "Node.h"
 
 extern "C" Point *getPoint(const int M, const int N, const int *top, const int *_board,
 						   const int lastX, const int lastY, const int noX, const int noY);

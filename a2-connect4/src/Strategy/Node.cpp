@@ -1,24 +1,41 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <cassert>
+#include <limits>
 
-#include "Node.h"
+#include "Node.hpp"
 
 using namespace std;
 
-void Node::init (
-        int p, const int s[MAX_BOARD_SIZE][MAX_BOARD_SIZE],
-        int M, int N, const MyPoint& cur_move, const int* top, const int color,
-        const int noX, const int noY) {
-    this->parent = p;
-    this->a = cur_move;
-    this->color = color;
+const Point NO_MOVE({ -1, -1 });
+const int Node::dirx[8] = {0, 0,-1, 1, 1,-1, 1, 0};
+const int Node::diry[8] = {0,-1,-1,-1, 0, 1, 1, 1};
+std::unique_ptr<Node[]> Node::pool(new Node[MAX_POOL_SIZE]);
+int Node::node_cnt = 0;
+
+Node& Node::init_pool() {
+    // pool.reset(new Node[MAX_POOL_SIZE]);
+    node_cnt = 1;
+    return pool[0];
+}
+
+void Node::init(int self, int parent, int M, int N, const int* _board, const int* _top,
+                int lastColor, int lastX, int lastY, int noX, int noY)
+{
+    this->self = self;
+    this->parent = parent;
+    this->last_move = Point(lastX, lastY);
+    this->last_color = lastColor;
     this->noX = noX, this->noY = noY;
-    nrow = M, ncol = N;
+    Q = 0; this->N = 0;
+    max_child_num = child_num = 0;
+    nrow = M; ncol = N;
+    type = NodeType::FREELY_EXPANDABLE;
+
+    board = Board(M, N, _board);
     for (int j = 0; j < ncol; j++) {
-        for (int i = 0; i < nrow; i++)
-            (this->s)[i][j] = s[i][j]; // copy over the current board
-        (this->top)[j] = top[j];
+        (this->top)[j] = _top[j];
         if (next_top(j) >= 0) {
             children[j] = -1; // set to available
             max_child_num++;
@@ -26,213 +43,181 @@ void Node::init (
             children[j] = -2;
         }
     }
-    if (max_child_num == 0) type = -3;
+    if (max_child_num == 0) type = NodeType::FULL;
+    if (lastX != -1)
+        set_node_type();
 }
 
-void Node::init_with_move (
-        int p, const int old_s[MAX_BOARD_SIZE][MAX_BOARD_SIZE],
-        int M, int N, const MyPoint& cur_move, const int* old_top, const int color,
-        const int noX, const int noY) {
-    init(p, old_s, M, N, cur_move, old_top, color, noX, noY);
-    (this->s)[a.first][a.second] = color;
-    (this->top)[a.second] = a.first; // make the move
-    if (next_top(a.second) < 0) {
-        max_child_num--;
-        children[a.second] = -2;
+void Node::init_with_move (int self, int parent, int M, int N, const Board& _board, const short* _top,
+                           int lastColor, Point last_move, int noX, int noY)
+{
+    this->self = self;
+    this->parent = parent;
+    this->last_move = last_move;
+    this->last_color = lastColor;
+    this->noX = noX, this->noY = noY;
+    Q = 0; this->N = 0;
+    max_child_num = child_num = 0;
+    nrow = M; ncol = N;
+    type = NodeType::FREELY_EXPANDABLE;
+
+    board = _board;
+    board.piece_at(last_move.x, last_move.y, lastColor);
+    for (int j = 0; j < ncol; j++) {
+        (this->top)[j] = (j == last_move.y) ? last_move.x : _top[j];
+        if (next_top(j) >= 0) {
+            children[j] = -1; // set to available
+            max_child_num++;
+        } else {
+            children[j] = -2;
+        }
     }
-    if (max_child_num == 0) type = -3;
+    if (max_child_num == 0) type = NodeType::FULL;
+    set_node_type();
 }
 
-void Node::expand(int this_idx, int child_idx, Node& child) {
-    int i;
-    if (type >= 0) {
-        i = the_move;
-        children[i] = child_idx;
-    } else
-        for (i = 0; i < ncol; i++)
-            if (children[i] == -1) { // found a node to expand
-                children[i] = child_idx;
-                break;
-            }
-    child.init_with_move(this_idx, s, nrow, ncol, {next_top(i), i},
-                         top, flip(color), noX, noY);
+void Node::set_node_type() {
+    auto move = get_forcing_move(board, top, flip(last_color), last_move);
+    if (move.first == MoveType::FORCING)
+        type = NodeType::FORCING, the_move = move.second;
+    else if (move.first == MoveType::LOSING)
+        type = NodeType::LOSING, the_move = NO_MOVE;
+}
+
+Node& Node::expand() {
+    int y;
+    if (type == NodeType::FORCING) {
+        y = the_move.y;
+    } else { // NodeType::FREELY_EXPANDABLE
+        for (y = 0; y < ncol; y++) if (children[y] == -1) break;
+    }
+    pool[node_cnt].init_with_move(node_cnt, self, nrow, ncol, board, top,
+                                  flip(last_color), {next_top(y), y}, noX, noY);
+    children[y] = node_cnt;
     child_num++;
-    if (child_num >= max_child_num) type = -3;
+    if (child_num >= max_child_num) type = NodeType::FULL;
+    return pool[node_cnt++];
 }
 
-//TODO: how does nox, noy affect marking and evaluating?
-const int Node::dirx[8] = {0, 0,-1, 1, 1,-1, 1, 0};
-const int Node::diry[8] = {0,-1,-1,-1, 0, 1, 1, 1};
-void Node::mark_location(int s_cur[][12][8], int x, int y) {
-    for (int dir = 1; dir < 8; dir++) { // each dir
-        int x1 = x + dirx[dir], y1 = y + diry[dir];
-        bool in_range = 0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol;
-        if (!in_range || s_cur[x1][y1][0] == 0) {
-            s_cur[x][y][dir] = 0;
-            continue;
-        } else { s_cur[x][y][dir] = 1; }
-
-        int p_color = s_cur[x1][y1][0];
-        for (int i = 2; i < 12; i++) {
-            x1 = x + i*dirx[dir], y1 = y + i*diry[dir];
-            in_range = 0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol;
-            if (in_range && s_cur[x1][y1][0] == p_color)
-                s_cur[x][y][dir]++;
-            else
-                break;
+int Node::bestChild() {
+    assert(type == NodeType::FULL);
+    int best_child = -1;
+    double max_score = -std::numeric_limits<double>::max();
+    for (int i = 0; i < ncol; i++) {
+        if (children[i] < 0) continue;
+        double score = pool[children[i]].calc_score(N);
+        if (score > max_score) {
+            max_score = score;
+            best_child = children[i];
         }
     }
+    if (best_child < 0) {
+        fprintf(stderr, "[Error] best_child returning -1. Aborting...\n");
+        fprintf(stderr, "self-%d p-%d max_c-%d c_no-%d\n", self, parent, max_child_num, child_num);
+    }
+    return best_child;
 }
 
-void Node::evaluate_strength(int s_cur[][12][8], int top_cur[][2], int turn, int x, int y) {
-    top_cur[y][1] = 0; // reset
-    for (int dir = 1; dir < 8; dir++) { // consider one dir only
-        int x1 = x + dirx[dir], y1 = y + diry[dir];
-        bool in_range1 = 0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol;
-        if (in_range1) {
-            if (s_cur[x][y][dir] >= 3) {
-                if (s_cur[x1][y1][0] == turn) {
-                    top_cur[y][1] = 3;
-                    return;
-                } else { top_cur[y][1] = 2; }
-            } else if (s_cur[x][y][dir] > 0) {
-                top_cur[y][1] = max(1, top_cur[y][1]);
+Point Node::bestMove() {
+    if (is_leaf()) {
+        for (int i = 0; i < ncol; i++) {
+            if (children[i] >= -1) {
+                return { next_top(i), i };
             }
         }
     }
-    for (int dir = 1; dir < 4; dir++) { // for each pair of dirs
-        int x1 = x + dirx[dir], y1 = y + diry[dir];
-        int x2 = x + dirx[8-dir], y2 = y + diry[8-dir];
-        bool in_range1 = 0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol;
-        bool in_range2 = 0 <= x2 && x2 < nrow && 0 <= y2 && y2 < ncol;
-        if (in_range1 && in_range2) { // both dir available
-            if (s_cur[x1][y1][0] == s_cur[x2][y2][0]) { // same color
-                int strength = s_cur[x][y][dir] + s_cur[x][y][8-dir];
-                if (strength >= 3) { // 3 or 2
-                    if (s_cur[x1][y1][0] == turn) { // 3
-                        top_cur[y][1] = 3;
-                        return;
-                    } else { top_cur[y][1] = 2; }
-                // TODO: is this reasonable?
-                } else if (strength > 0) {
-                    top_cur[y][1] = max(1, top_cur[y][1]);
-                }
-            }
-        }
-    }
+    return pool[bestChild()].last_move;
 }
 
 int Node::defaultPolicy() {
-    // copy current board: s_cur[i][j][x]
-    // x = 0: the board; 1-7: count the num of consecutive pieces of each direction
-    // 1 left, 7 right; 2 up left, 6 down right; 3 down left, 5 up right; 4 down
-    int s_cur[12][12][8];
-    // top_cur[i][0] is top, top_cur[i][1] is the strength of the move
-    // 3 - I win, 2 - opponent wins, 1 - good, 0 - average
-    int top_cur[12][2];
-    for (int j = 0; j < ncol; j++) {
-        top_cur[j][0] = top[j];
-        for (int i = 0; i < nrow; i++)
-            s_cur[i][j][0] = s[i][j];
-    }
-    int turn = flip(color); // whose turn it is for the current move
+    if (type == NodeType::LOSING) return PROFIT_LOSS;
 
-    // mark the map
+    // calc remaining moves
+    int remaining_moves = 0;
     for (int y = 0; y < ncol; y++) {
-        if (next_top(top_cur, y) < 0) continue;
-        int x = next_top(top_cur, y);
-        mark_location(s_cur, x, y);
-        evaluate_strength(s_cur, top_cur, turn, x, y);
-    }
-    // check for forcing moves
-    for (int i = 0; i < ncol; i++) {
-        if (next_top(top_cur, i) < 0) continue;
-        if (top_cur[i][1] == 3) { // winnable
-            type = -1, the_move = i;
-            break;
-        } else if (top_cur[i][1] == 2) {
-            type = the_move = i;
-        }
+        if (y != noY) remaining_moves += top[y];
+        else if (top[y] > noX) remaining_moves += top[y] - 1;
     }
 
-    auto is_draw = [&] {
-        for (int i = 0; i < ncol; i++)
-            if (next_top(top_cur, i) >= 0)
-                return false;
-        return true;
-    };
+    short top_cur[12];
+    for (int j = 0; j < ncol; j++) {
+        top_cur[j] = top[j];
+    }
+    Board board_cur = board;
+    int turn = last_color; // last move done by last_color
+    auto last_move_cur = last_move;
+
     // simulate until one side wins
     ::srand(time(0));
-    bool is_ended = false;
-    bool is_drawn = false;
+    bool is_ended = board_cur.is_won(last_color) || remaining_moves <= 0;
     while (!is_ended) {
-        if ((is_drawn = is_draw())) break; // check for draw
+        turn = flip(turn); // switch turn
+        auto move = get_forcing_move(board_cur, top_cur, turn, last_move_cur);
 
-        // check if a certain move wins or prevents loss
-        int y = -1;
-        bool has_forcing_moves = false;
-        bool has_good_moves = false;
-        for (int i = 0; i < ncol; i++) { // check for forcing moves
-            if (next_top(top_cur, i) < 0) continue;
-            if (top_cur[i][1] == 3) { // winnable
-                is_ended = true;
-                has_forcing_moves = true, y = i;
-                break;
-            } else if (top_cur[i][1] == 2) {
-                has_forcing_moves = true, y = i;
-            }
+        if (move.first == MoveType::AVERAGE) {
+            int y = rand() % ncol;
+            while (top_cur[y] == 0) y = rand() % ncol;
+            move.second = Point({ top_cur[y]-1, y });
+        } else if (move.first == MoveType::LOSING) {
+            return (turn == last_color) ? PROFIT_WIN : PROFIT_LOSS;
         }
-        if (!has_forcing_moves) {
-            for (int i = 0; i < ncol; i++) { // check for good moves
-                if (next_top(top_cur, i) >= 0 && top_cur[i][1] > 0) {
-                    has_good_moves = true;
-                    break;
-                }
-            }
-            // make a random move among good moves
-            int level = has_good_moves ? 1 : 0;
-            while (true) { // generate legal move
-                y = rand() % ncol;
-                if (next_top(top_cur, y) >= 0 && top_cur[y][1] == level)
-                    break;
-            }
-        }
-        top_cur[y][0] = next_top(top_cur, y);
-        s_cur[top_cur[y][0]][y][0] = turn; // make move
-        turn = flip(turn);
 
-        // mark the map again
-        if (!is_ended) {
-            for (int y_tmp = 0; y_tmp < ncol; y_tmp++) {
-                if (top_cur[y_tmp][0] == 0) continue; // column full
-                int x = next_top(top_cur, y_tmp);
-                // only recalculate the candidate moves that are on the same line
-                // as the new move and has a distance of less than 4
-                // int distX = abs(top_cur[y][0] - x), distY = abs(y - y_tmp);
-                // if ((distX==distY || distX==0 || distY==0) && max(distX,distY)<4) {
-                    mark_location(s_cur, x, y_tmp);
-                    evaluate_strength(s_cur, top_cur, turn, x, y_tmp);
-                // }
-            }
-        }
+        board_cur.place(move.second.x, move.second.y, turn);
+        top_cur[move.second.y]--, remaining_moves--;
+        if (move.second.y == noY && move.second.x-1 == noX)
+            top_cur[move.second.y]--, remaining_moves--;
+
+        is_ended = board_cur.is_won(turn) || remaining_moves <= 0;
     }
 
-    #ifdef DEBUG
-    // cerr << "Simulation ---" << endl;
-    // for (int i = 0; i < nrow; i++) {
-    //     for (int j = 0; j < ncol; j++)
-    //         cerr << s_cur[i][j][0] << ' ';
-    //     cerr << endl;
-    // }
-    // cerr << "draw: " << is_drawn << " turn: " << turn << " color: " << color << endl;
-    // cerr << endl;
-    #endif
+    if (board_cur.is_won(turn)) {
+        if (turn == last_color) // opponent just moved and game ended
+            return PROFIT_LOSS;
+        else if (turn == flip(last_color))
+            return PROFIT_WIN;
+    }
+    return PROFIT_DRAW;
+}
+
+Node::Move Node::get_forcing_move(Board& board_cur, short* top_cur, int turn_cur, Point last_move) {
+    int color_to_check = flip(turn_cur);
+    // check downwards
+    int down;
+    for (down = last_move.x + 1; down < nrow; down++) {
+        if (!board_cur.piece_at(down, last_move.y, color_to_check)) break;
+    }
+    if (last_move.x - down == 3 && (last_move.y != noY || last_move.x-1 != noX))
+        return { MoveType::FORCING, {last_move.x-1, last_move.y}};
     
-    if (is_drawn) return 1;
-    if (turn == color) // opponent's turn to move when game ended
-        return 2;
-    else
-        return 0;
+    // check other dirs
+    for (int dir = 1; dir <= 3; dir++) {
+        int x1, y1;
+        for (x1 = last_move.x+dirx[dir], y1 = last_move.y+diry[dir];
+             0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol;
+             x1 += dirx[dir], y1 += diry[dir])
+        {
+            if (!board_cur.piece_at(x1, y1, color_to_check)) break;
+        }
+        int x2, y2;
+        for (x2 = last_move.x+dirx[8-dir], y2 = last_move.y+diry[8-dir];
+             0 <= x2 && x2 < nrow && 0 <= y2 && y2 < ncol;
+             x2 += dirx[8-dir], y2 += diry[8-dir])
+        {
+            if (!board_cur.piece_at(x2, y2, color_to_check)) break;
+        }
+
+        if (y2 - y1 >= 4) { // 3 pieces in between
+            bool empty1 = (0 <= x1 && x1 < nrow && 0 <= y1 && y1 < ncol) && top_cur[y1] == x1 + 1;
+            bool empty2 = (0 <= x2 && x2 < nrow && 0 <= y2 && y2 < ncol) && top_cur[y2] == x2 + 1;
+            if (empty1 && empty2)
+                return { MoveType::LOSING, NO_MOVE };
+            else if (empty1)
+                return { MoveType::FORCING, { x1, y1 } };
+            else if (empty2)
+                return { MoveType::FORCING, { x2, y2 } };
+        }
+    }
+    return Node::Move({ Node::MoveType::AVERAGE, NO_MOVE });
 }
 
 inline int Node::next_top(int y) {
@@ -240,7 +225,7 @@ inline int Node::next_top(int y) {
     else return top[y] - 1;
 }
 
-inline int Node::next_top(int top_cur[][2], int y) {
-    if (y == noY && top_cur[y][0]-1 == noX) return noX - 1;
-    else return top_cur[y][0] - 1;
-}
+// inline int Node::next_top(int top_cur[][2], int y) {
+//     if (y == noY && top_cur[y][0]-1 == noX) return noX - 1;
+//     else return top_cur[y][0] - 1;
+// }

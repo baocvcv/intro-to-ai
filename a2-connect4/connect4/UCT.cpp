@@ -1,6 +1,7 @@
 #include <ctime>
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 
 #include "UCT.h"
 #include "TreeNode.h"
@@ -268,9 +269,7 @@ std::pair<int, int> UCT::UCTSearch(int const* const* boardStart, const int *topS
 	delete[] nowTop;
 	nowTop = nullptr;
 
-#ifdef _DEBUG
-	printf("Searched %d times, taking %lf s\n", times, timer->getElapsedMicroseconds() / 1e6);
-#endif
+	fprintf(stderr, "Searched %d times, taking %lf s\n", times, timer->getElapsedMicroseconds() / 1e6);
 
 	return result;
 

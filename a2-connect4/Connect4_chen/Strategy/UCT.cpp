@@ -269,8 +269,15 @@ std::pair<int, int> UCT::UCTSearch(int const* const* boardStart, const int *topS
 	nowTop = nullptr;
 
 #ifdef _DEBUG
-	printf("Searched %d times, taking %lf s\n", times, timer->getElapsedMicroseconds() / 1e6);
+	fprintf(stderr, "Searched %d times, taking %lf s\n", times, timer->getElapsedMicroseconds() / 1e6);
+	for (int i = 0; i < N; i++) {
+		if (root->children[i] != nullptr) {
+			auto c = root->children[i];
+			fprintf(stderr, "(%d, %.3f) ", c->visNum, c->profit);
+		}
+	}
 #endif
+	fprintf(stderr, "\nSearched %d times, taking %lf s\n", times, timer->getElapsedMicroseconds() / 1e6);
 
 	return result;
 

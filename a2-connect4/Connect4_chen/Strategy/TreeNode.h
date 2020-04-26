@@ -8,6 +8,7 @@ class TreeNode
 {
 	friend class UCT;
 
+public:
 	int _player;
 	int _x, _y;
 	int visNum;
@@ -19,7 +20,6 @@ class TreeNode
 	int _isTerminal;
 	static TreeNode **pool;
 
-public:
 	TreeNode(int x, int y, int player, TreeNode *_father);
 	~TreeNode() {}
 	int x() { return _x; }

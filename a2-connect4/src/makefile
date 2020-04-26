@@ -2,7 +2,7 @@
 all: compete strategy
 
 test: compete strategy
-	Compete/Compete so/Strategy.so TestCases/100.so result 10
+	Compete/Compete so/Strategy.so TestCases/80.so result 10
 test_debug: compete_debug strategy_debug
 	Compete/Compete so/Strategy.so.d TestCases/100.so result 2
 
