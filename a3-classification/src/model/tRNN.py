@@ -15,7 +15,7 @@ class Config(BaseConfig):
         self.batch_size = 16
         self.output_int = 20
         # sentence length
-        self.pad_size = 128
+        self.pad_size = 600
         self.learning_rate = 1e-3
 
         ''' model params '''

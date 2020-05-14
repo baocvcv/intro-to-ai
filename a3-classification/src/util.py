@@ -37,31 +37,37 @@ def inspect_train(train_file):
     ''' inpect training file '''
     from collections import Counter
     label_cnt = Counter()
+    num_bins = 20
+    bins = [0] * num_bins
+    step = 50
     with open(train_file, 'r') as f:
         for line in f:
             lin = line.strip()
             if not lin:
                 continue
 
-            label = lin.split('\t')
-            if len(label) < 2:
-                print(label)
-                continue
-            else:
-                label = label[1]
-
+            _, label, content = lin.split('\t')
             label = label.split(' ')[1:]
             label = [l.split(':') for l in label]
             label = sorted(label, key=lambda x: x[1], reverse=True)[0]
             label = label[0]
-            # label = LABEL[label[0]]
             label_cnt[label] += 1
+
+            length = len(content.split(' '))
+            if length > (step * (num_bins-1)):
+                bins[-1] += 1
+            else:
+                bins[int(length / step)] += 1
     total_cnt = 0
     for label in label_cnt:
         total_cnt += label_cnt[label]
     for label in label_cnt:
         print(label, '=', '%4d' % label_cnt[label],
               '%.3f' % (label_cnt[label]/total_cnt))
+    cnt_cumulative = 0
+    for i, cnt in enumerate(bins):
+        cnt_cumulative += cnt
+        print('%3d' % (i*step), '=', '%5d' % cnt, '%.3f' % (cnt_cumulative/total_cnt))
     print("total_cnt =", total_cnt)
     
 
