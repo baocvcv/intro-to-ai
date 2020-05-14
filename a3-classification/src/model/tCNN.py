@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-#import numpy as np
 
 from .base_config import BaseConfig
 
@@ -11,21 +10,21 @@ class Config(BaseConfig):
 
     def __init__(self, dataset, embedding):
         super().__init__(dataset, embedding)
+        self.model_name = 'tCNN'
 
         ''' override training params '''
-        self.num_epochs = 50  #TODO for debug
-        self.batch_size = 32
+        self.num_epochs = 30
+        self.batch_size = 64
         self.output_int = 30
         # sentence length
-        self.pad_size = 512
+        self.pad_size = 256
         self.learning_rate = 1e-3
 
         ''' model params '''
         # kernel sizes for the first layer
-        # TODO: ???
-        self.filter_sizes = (2, 3, 4, 8, 16)                          # 卷积核尺寸
+        self.filter_sizes = (2, 3, 4, 8)                 # 卷积核尺寸
         # kernel number for the first layer
-        self.num_filters = 256                # 卷积核数量(channels数)
+        self.num_filters = 512                # 卷积核数量(channels数)
 
 
 class Model(nn.Module):

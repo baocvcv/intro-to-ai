@@ -1,33 +1,31 @@
-from os.path import join
-
-import torch
 import torch.nn as nn
-import numpy as np
 
 from .base_config import BaseConfig
 
+
 class Config(BaseConfig):
     """ Model configs """
-    
+
     def __init__(self, dataset, embedding):
         super().__init__(dataset, embedding)
+        self.model_name = 'tRNN'
 
         ''' override training params '''
-        self.num_epochs = 4 #TODO for debug
-        self.batch_size = 64
+        self.num_epochs = 10
+        self.batch_size = 16
         self.output_int = 20
         # sentence length
-        self.pad_size = 512
+        self.pad_size = 128
         self.learning_rate = 1e-3
 
         ''' model params '''
-        self.hidden_size = 128                                          # lstm隐藏层
-        self.num_layers = 2                                             # lstm层数
-
-'''Recurrent Neural Network for Text Classification with Multi-Task Learning'''
+        self.hidden_size = 128  # lstm隐藏层
+        self.num_layers = 4  # lstm层数
 
 
 class Model(nn.Module):
+    '''Recurrent Neural Network for Text Classification with Multi-Task Learning'''
+
     def __init__(self, config):
         super(Model, self).__init__()
         if config.embedding_pretrained is not None:

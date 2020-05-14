@@ -8,9 +8,9 @@ class BaseConfig(object):
 
     def __init__(self, dataset, embedding):
         ''' all the parameters '''
+        self.model_name = 'model'
 
         ''' paths and devices '''
-        self.model_name = 'tRNN'
         self.dataset_path = join('../data/', dataset)
         self.train_path = join(self.dataset_path, 'train.txt')
         self.valid_path = join(self.dataset_path, 'valid.txt')
@@ -41,7 +41,7 @@ class BaseConfig(object):
             if self.embedding_pretrained is not None else 300
 
         ''' specific training params '''
-        self.num_epochs = 50 
+        self.num_epochs = 50
         self.batch_size = 64
         # sentence length
         self.pad_size = 512
