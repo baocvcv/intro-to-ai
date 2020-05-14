@@ -4,3 +4,10 @@ sina_news
 test_news
 train
 models
+
+Bert-Chinese-Text-Classification-Pytorch
+Chinese-Text-Classification-Pytorch
+a3-classification/data/sina/saved_model
+a3-classification/word_vectors
+log
+

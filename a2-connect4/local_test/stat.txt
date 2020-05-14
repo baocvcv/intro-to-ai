@@ -1,0 +1,1 @@
+id	wina	winb	losea	loseb	tie	bug	debug	illegal	deillegal	timeout	detimeout	loaderr	deloaderr	noentry	denoentry
