@@ -30,6 +30,7 @@ def init_network(model, method='xavier', exclude='embedding', seed=123):
 
 
 def train(config, model, train_iter, validation_iter, test_iter):
+    print("[Info] Using device ", config.device)
     start_time = time.time()
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)

@@ -1,20 +1,19 @@
-from os.path import join
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+#import numpy as np
 
 from .base_config import BaseConfig
 
+
 class Config(BaseConfig):
     """ Model configs """
-    
+
     def __init__(self, dataset, embedding):
         super().__init__(dataset, embedding)
 
         ''' override training params '''
-        self.num_epochs = 40 #TODO for debug
+        self.num_epochs = 50  #TODO for debug
         self.batch_size = 32
         self.output_int = 30
         # sentence length
@@ -24,14 +23,14 @@ class Config(BaseConfig):
         ''' model params '''
         # kernel sizes for the first layer
         # TODO: ???
-        self.filter_sizes = (2, 3, 4, 8, 16)                                   # 卷积核尺寸
+        self.filter_sizes = (2, 3, 4, 8, 16)                          # 卷积核尺寸
         # kernel number for the first layer
-        self.num_filters = 256                                          # 卷积核数量(channels数)
-
-'''Convolutional Neural Networks for Sentence Classification'''
+        self.num_filters = 256                # 卷积核数量(channels数)
 
 
 class Model(nn.Module):
+    '''Convolutional Neural Networks for Sentence Classification'''
+
     def __init__(self, config):
         super(Model, self).__init__()
         if config.embedding_pretrained is not None:
