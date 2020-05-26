@@ -1,3 +1,4 @@
+# coding=utf-8
 import time
 
 import numpy as np
@@ -11,8 +12,7 @@ from util import get_time_dif
 
 #TODO: grid search for parameters, train-validation
 
-
-# 权重初始化，默认xavier
+# init weights, use xavier by default
 def init_network(model, method='xavier', exclude='embedding', seed=123):
     for name, w in model.named_parameters():
         if exclude not in name:
@@ -33,7 +33,8 @@ def train(config, model, train_iter, validation_iter, test_iter):
     print("[Info] Using device ", config.device)
     start_time = time.time()
     model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate,
+                                 weight_decay=0.1)
 
     # decrease lr each epoch by a factor of gamma
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)

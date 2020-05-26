@@ -11,3 +11,4 @@ a3-classification/data/sina/saved_model
 a3-classification/word_vectors
 log
 *.log
+*.pyc

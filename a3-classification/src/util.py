@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 from os.path import join
 import time
@@ -69,7 +70,7 @@ def inspect_train(train_file):
         cnt_cumulative += cnt
         print('%3d' % (i*step), '=', '%5d' % cnt, '%.3f' % (cnt_cumulative/total_cnt))
     print("total_cnt =", total_cnt)
-    
+
 
 def build_vocab(input_file_path, tokenizer, max_size, min_freq):
     ''' Build vocab dictionary '''
