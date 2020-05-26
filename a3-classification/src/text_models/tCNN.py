@@ -8,10 +8,10 @@ import numpy as np
 params = {
     'model': 'tCNN',
     'tuning': False,
-    'dropout': 0.45,
-    'pad_size': 300,
-    'lr': 3e-4,
-    'filter_sizes': (2, 4, 10),
+    'dropout': 0.43,
+    'pad_size': 334,
+    'lr': 4e-4,
+    'filter_sizes': (2, 4, 8),
     'num_filters': 150,
     'weight_decay': 3e-3
 }
