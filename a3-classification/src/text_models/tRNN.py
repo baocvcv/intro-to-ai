@@ -42,7 +42,7 @@ class Model(nn.Module):
         x, _ = x
         out = self.embedding(x)  # [batch_size, seq_len, embeding]=[128, 32, 300]
         out, _ = self.lstm(out)
-        out = self.fc(out[:, -1, :])  # 句子最后时刻的 hidden state
+        out = self.fc(out[:, -1, :])  # hidden state
         return out
 
     ''' Flexible length RNN '''

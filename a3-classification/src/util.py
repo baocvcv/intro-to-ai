@@ -17,6 +17,8 @@ UNK, PAD = '<UNK>', '<PAD>'  # unknown，padding
 # label dict
 LABEL = {'感动':0, '同情':1, '无聊':2, '愤怒':3,
          '搞笑':4, '难过':5, '新奇':6, '温馨':7}
+# weight calc
+BETA = 0.99
 
 def train_valid_split(input_file, saveTo, ratio=0.1):
     ''' split file into train and valid dataset '''
@@ -178,6 +180,26 @@ def build_dataset(config, params, use_word):
     test = load_dataset(config.test_path, params['pad_size'])
     return vocab, train, valid, test
 
+def calc_weight(input_file):
+    from collections import Counter
+    label_cnt = Counter()
+    label_len = defaultdict(int)
+    with open(input_file, 'r') as f:
+        for line in f:
+            lin = line.strip()
+            if not lin:
+                continue
+            _, label, _ = lin.split('\t')
+            label = parse_label(label)
+            label_cnt[label] += 1
+    num_samples = [.0] * len(LABEL)
+    for label in LABEL:
+        num_samples[LABEL[label]] = label_cnt[label]
+    num_samples = np.array(num_samples)
+    effective_num = 1.0 - np.power(BETA, num_samples)
+    weights = (1.0 - BETA) / effective_num
+    weights = weights / np.sum(weights) * len(LABEL)
+    return weights
 
 # TODO: modify this!
 class DatasetIterater(object):
