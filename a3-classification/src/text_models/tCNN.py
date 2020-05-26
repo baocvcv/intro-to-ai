@@ -2,31 +2,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from .base_config import BaseConfig
-
-
-class Config(BaseConfig):
-    """ Model configs """
-
-    def __init__(self, dataset, embedding):
-        super().__init__(dataset, embedding)
-        self.model_name = 'tCNN'
-
-        ''' override training params '''
-        self.dropout = 0.4
-        self.num_epochs = 100
-        self.batch_size = 16
-        self.output_int = 32
-        # sentence length
-        self.pad_size = 500
-        self.learning_rate = 1e-4
-
-        ''' model params '''
-        # kernel sizes for the first layer
-        self.filter_sizes = (2, 3, 4)                 # 卷积核尺寸
-        # kernel number for the first layer
-        self.num_filters = 100                # 卷积核数量(channels数)
+from ray import tune
+import numpy as np
 
 params = {
     'model': 'tCNN',
@@ -36,6 +13,16 @@ params = {
     'filter_sizes': (2, 3, 4),
     'num_filters': 100,
     'weight_decay': 0.01
+}
+
+params_tune = {
+    'model': 'tCNN',
+    'dropout': tune.sample_from(lambda spec: np.random.uniform(0.2, 0.8)),
+    'pad_size': tune.sample_from(lambda spec: np.random.randint(16, 512)),
+    'lr': tune.sample_from(lambda spec: 10**(-10 * np.random.rand())),
+    'filter_sizes': tune.choice([(2, 3, 4), (2, 4, 8), (2, 3, 6, 12)]),
+    'num_filters': tune.choice([50, 100, 150, 200]),
+    'weight_decay': tune.sample_from(lambda spec: np.random.uniform(.0, 0.01))
 }
 
 

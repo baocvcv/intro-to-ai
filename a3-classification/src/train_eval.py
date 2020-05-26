@@ -8,6 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn import metrics
 from tensorboardX import SummaryWriter
+from ray import tune
+from ray.tune import track
 
 from util import get_time_dif, build_dataset, build_iterator
 from text_models.base_config import BaseConfig
@@ -35,11 +37,6 @@ def init_network(model, method='xavier', exclude='embedding', seed=123):
 
 def train(params):
     config = BaseConfig(dataset, embedding)
-
-    np.random.seed(1)
-    torch.manual_seed(1)
-    torch.cuda.manual_seed_all(1)
-    torch.backends.cudnn.deterministic = True
 
     # load training data
     print("[Info] Start training " + params['model'] + " with " + config.dataset)
@@ -84,7 +81,8 @@ def train(params):
                 true = labels.data.cpu()
                 predic = torch.max(outputs.data, 1)[1].cpu()
                 train_acc = metrics.accuracy_score(true, predic)
-                valdation_acc, valdation_loss = evaluate(config, model, valid_iter)
+                validation_acc, valdation_loss = evaluate(config, model, valid_iter)
+                track.log(mean_accuracy=validation_acc)
                 if valdation_loss < valdation_best_loss:
                     valdation_best_loss = valdation_loss
                     torch.save(model.state_dict(), config.save_path)
@@ -94,11 +92,11 @@ def train(params):
                     improve = ''
                 time_dif = get_time_dif(start_time)
                 msg = 'Iter: {0:>6},  Train Loss: {1:>5.2},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.2},  Val Acc: {4:>6.2%},  Time: {5} {6}'
-                print(msg.format(cur_batch, loss.item(), train_acc, valdation_loss, valdation_acc, time_dif, improve))
+                print(msg.format(cur_batch, loss.item(), train_acc, valdation_loss, validation_acc, time_dif, improve))
                 writer.add_scalar("loss/train", loss.item(), cur_batch)
                 writer.add_scalar("loss/valdation", valdation_loss, cur_batch)
                 writer.add_scalar("acc/train", train_acc, cur_batch)
-                writer.add_scalar("acc/valdation", valdation_acc, cur_batch)
+                writer.add_scalar("acc/valdation", validation_acc, cur_batch)
                 model.train()
             cur_batch += 1
             if cur_batch - last_significant_batch > config.require_improvement:

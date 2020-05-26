@@ -3,8 +3,11 @@ import argparse
 import time
 from importlib import import_module
 
-import torch
+# import torch
 import numpy as np
+import ray
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
 
 from train_eval import train, init_network, test
 from util import build_dataset, build_iterator, get_time_dif
@@ -22,6 +25,10 @@ if __name__ == '__main__':
     module = import_module('text_models.' + args.model)
 
     if args.cmd == 'train':
+        np.random.seed()
+        # torch.manual_seed(1)
+        # torch.cuda.manual_seed_all(1)
+        # torch.backends.cudnn.deterministic = True
         params = module.params
         train(params)
     elif args.cmd == 'test':
@@ -34,8 +41,16 @@ if __name__ == '__main__':
         model = module.Model(params, config).to(config.device)
         test(config, model, test_iter)
     elif args.cmd == 'tune':
-        pass
-
+        params = module.params_tune
+        ray.init(local_mode=True)
+        analysis = tune.run(
+            train,
+            num_samples=30,
+            scheduler=ASHAScheduler(metric='mean_accuracy', mode='max'),
+            config=params,
+            fail_fast=True
+        )
+        # dfs = analysis.trial_dataframes
         
 
     
