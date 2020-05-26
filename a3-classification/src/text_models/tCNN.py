@@ -17,7 +17,7 @@ class Config(BaseConfig):
         self.dropout = 0.6
         self.num_epochs = 100
         self.batch_size = 16
-        self.output_int = 50
+        self.output_int = 32
         # sentence length
         self.pad_size = 400
         self.learning_rate = 1e-3

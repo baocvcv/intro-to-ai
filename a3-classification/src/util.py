@@ -115,7 +115,7 @@ def build_dataset(config, use_word):
                 # parse label
                 label = label.split(' ')[1:]
                 label = [l.split(':') for l in label]
-                label = sorted(label, key=lambda x: x[1], reverse=True)[0]
+                label = sorted(label, key=lambda x: int(x[1]), reverse=True)[0]
                 label = LABEL[label[0]]
                 # parse content
                 words_line = []
@@ -231,14 +231,16 @@ if __name__ == "__main__":
             l = f.readline().strip().split(' ')
             no_word, emb_dim = (int(l[0]), int(l[1]))
             embeddings = np.random.rand(len(word_to_id), emb_dim)
+            embedding_hit = 0
             for i, line in enumerate(f):
                 lin = line.strip().split(" ") # split to words
                 if lin[0] in word_to_id:
                     idx = word_to_id[lin[0]]
                     emb = [float(x) for x in lin[1:301]]
                     embeddings[idx] = np.asarray(emb, dtype='float32')
+                    embedding_hit += 1
         print("vocab_dict_size =", len(word_to_id))
-        print("embedded_dict_size =", len(embeddings))
+        print("embedding_hit=", embedding_hit)
         np.savez_compressed(train_embedded , embeddings=embeddings)
     elif args.cmd == 'split':
         train_valid_split(args.input,
