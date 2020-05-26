@@ -44,6 +44,6 @@ class BaseConfig(object):
         self.embed = self.embedding_pretrained.size(1)\
             if self.embedding_pretrained is not None else 300
         self.use_word = True
-        self.num_epochs = 100
+        self.num_epochs = 200
         self.batch_size = 16
         self.output_int = 32
