@@ -11,7 +11,7 @@ from tensorboardX import SummaryWriter
 from ray import tune
 from ray.tune import track
 
-from util import get_time_dif, build_dataset, build_iterator
+from util import get_time_dif, build_dataset, build_iterator, calc_weight
 from text_models.base_config import BaseConfig
 
 dataset = 'sina'
@@ -40,6 +40,7 @@ def train(params):
 
     # load training data
     print("[Info] Start training " + params['model'] + " with " + config.dataset)
+    weights = calc_weight(config.train_path)
     vocab_dict, d_train, d_valid, d_test = build_dataset(config, params, use_word=config.use_word)
     train_iter = build_iterator(d_train, config)
     valid_iter = build_iterator(d_valid, config)
@@ -73,7 +74,7 @@ def train(params):
         for i, (trains, labels) in enumerate(train_iter):
             outputs = model(trains)
             model.zero_grad()
-            loss = F.cross_entropy(outputs, labels)
+            loss = F.cross_entropy(outputs, labels, weight=weights)
             loss.backward()
             optimizer.step()
             if cur_batch % config.output_int == 0:
