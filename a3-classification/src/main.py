@@ -42,15 +42,16 @@ if __name__ == '__main__':
         test(config, model, test_iter)
     elif args.cmd == 'tune':
         params = module.params_tune
-        ray.init(local_mode=True)
+        #ray.init(local_mode=True)
         analysis = tune.run(
             train,
             num_samples=30,
             scheduler=ASHAScheduler(metric='mean_accuracy', mode='max'),
             config=params,
-            fail_fast=True
+            fail_fast=True,
+            resources_per_trial={"gpu": 5}
         )
         # dfs = analysis.trial_dataframes
-        
 
-    
+
+

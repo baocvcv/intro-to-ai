@@ -17,6 +17,10 @@ class BaseConfig(object):
             '/home/fred/External/Codes/intro-to-ai/a3-classification/data/',
             dataset
         )
+        self.dataset_path = join(
+            '/home/mengxy/bh/intro-to-ai/a3-classification/data/',
+            dataset
+        )
         self.train_path = join(self.dataset_path, 'train.txt')
         self.valid_path = join(self.dataset_path, 'valid.txt')
         self.test_path = join(self.dataset_path, 'sinanews.test')
