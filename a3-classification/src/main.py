@@ -55,5 +55,5 @@ if __name__ == '__main__':
             fail_fast=True,
             resources_per_trial={"gpu": 6}
         )
-        print('Best config is:', analysis.get_best_config(metrix='mean_accuracy'))
+        print('Best config is:', analysis.get_best_config(metric='mean_accuracy'))
 

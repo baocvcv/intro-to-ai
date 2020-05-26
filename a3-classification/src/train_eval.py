@@ -106,8 +106,9 @@ def train(params):
         if flag and not params['tuning']:
             break
         # valid after each epoch
-        validation_acc, valdation_loss = evaluate(config, model, valid_iter)
-        track.log(mean_accuracy=validation_acc)
+        if params['tuning']:
+            validation_acc, valdation_loss = evaluate(config, model, valid_iter)
+            track.log(mean_accuracy=validation_acc)
     writer.close()
     test(config, model, test_iter)
 
