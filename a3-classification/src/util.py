@@ -156,7 +156,7 @@ def build_dataset(config, params, use_word):
                 if not lin:
                     continue
                 _, label, content = lin.split('\t')
-                label = parse_label(label)
+                label = LABEL[parse_label(label)]
                 # parse content
                 words_line = []
                 token = tokenizer(content)

@@ -1,41 +1,42 @@
 # coding=utf-8
 import torch.nn as nn
+from ray import tune
+import numpy as np
 
-from .base_config import BaseConfig
+params = {
+    'model': 'tRNN',
+    'tuning': False,
+    'dropout': 0.43,
+    'pad_size': 334,
+    'lr': 4e-4,
+    'weight_decay': 3e-3,
+    'hidden_size': 128,
+    'num_layers': 4,
+}
 
-
-class Config(BaseConfig):
-    """ Model configs """
-
-    def __init__(self, dataset, embedding):
-        super().__init__(dataset, embedding)
-        self.model_name = 'tRNN'
-
-        ''' override training params '''
-        self.num_epochs = 10
-        self.batch_size = 16
-        self.output_int = 20
-        # sentence length
-        self.pad_size = 600
-        self.learning_rate = 1e-3
-
-        ''' model params '''
-        self.hidden_size = 128  # lstm隐藏层
-        self.num_layers = 4  # lstm层数
-
+params_tune = {
+    'model': 'tRNN',
+    'tuning': True,
+    'dropout': tune.sample_from(lambda spec: np.random.uniform(0.2, 0.8)),
+    'pad_size': tune.sample_from(lambda spec: np.random.randint(16, 512)),
+    'lr': tune.sample_from(lambda spec: 10**(-10 * np.random.rand())),
+    'weight_decay': tune.sample_from(lambda spec: np.random.uniform(.0, 0.01)),
+    'hidden_size': 128,
+    'num_layers': 4,
+}
 
 class Model(nn.Module):
     '''Recurrent Neural Network for Text Classification with Multi-Task Learning'''
 
-    def __init__(self, config):
+    def __init__(self, params, config):
         super(Model, self).__init__()
         if config.embedding_pretrained is not None:
             self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
         else:
             self.embedding = nn.Embedding(config.n_vocab, config.embed, padding_idx=config.n_vocab - 1)
-        self.lstm = nn.LSTM(config.embed, config.hidden_size, config.num_layers,
-                            bidirectional=True, batch_first=True, dropout=config.dropout)
-        self.fc = nn.Linear(config.hidden_size * 2, config.num_classes)
+        self.lstm = nn.LSTM(config.embed, params['hidden_size'], params['num_layers'],
+                            bidirectional=True, batch_first=True, dropout=params['dropout'])
+        self.fc = nn.Linear(params['hidden_size'] * 2, config.num_classes)
 
     def forward(self, x):
         x, _ = x
@@ -44,7 +45,7 @@ class Model(nn.Module):
         out = self.fc(out[:, -1, :])  # 句子最后时刻的 hidden state
         return out
 
-    '''变长RNN，效果差不多，甚至还低了点...'''
+    ''' Flexible length RNN '''
     # def forward(self, x):
     #     x, seq_len = x
     #     out = self.embedding(x)

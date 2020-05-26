@@ -11,9 +11,9 @@ params = {
     'dropout': 0.43,
     'pad_size': 334,
     'lr': 4e-4,
+    'weight_decay': 3e-3,
     'filter_sizes': (2, 4, 8),
     'num_filters': 150,
-    'weight_decay': 3e-3
 }
 
 params_tune = {
@@ -22,9 +22,9 @@ params_tune = {
     'dropout': tune.sample_from(lambda spec: np.random.uniform(0.2, 0.8)),
     'pad_size': tune.sample_from(lambda spec: np.random.randint(16, 512)),
     'lr': tune.sample_from(lambda spec: 10**(-10 * np.random.rand())),
+    'weight_decay': tune.sample_from(lambda spec: np.random.uniform(.0, 0.01)),
     'filter_sizes': tune.choice([(2, 3, 4), (2, 4, 8), (2, 3, 6, 12)]),
     'num_filters': tune.choice([50, 100, 150, 200]),
-    'weight_decay': tune.sample_from(lambda spec: np.random.uniform(.0, 0.01))
 }
 
 
@@ -34,7 +34,7 @@ class Model(nn.Module):
     def __init__(self, params, config):
         super(Model, self).__init__()
         if config.embedding_pretrained is not None:
-            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
+            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=True)
         else:
             self.embedding = nn.Embedding(config.n_vocab, config.embed, padding_idx=config.n_vocab - 1)
         self.convs = nn.ModuleList(
