@@ -226,7 +226,6 @@ if __name__ == "__main__":
             pkl.dump(word_to_id, open(vocab_file, 'wb'))
 
         # generate vocab encodings
-        embedding_hit_cnt = 0
         with open(pretrain_file, "r", encoding='UTF-8') as f:
             l = f.readline().strip().split(' ')
             no_word, emb_dim = (int(l[0]), int(l[1]))
@@ -237,7 +236,6 @@ if __name__ == "__main__":
                     idx = word_to_id[lin[0]]
                     emb = [float(x) for x in lin[1:301]]
                     embeddings[idx] = np.asarray(emb, dtype='float32')
-                    embedding_hit_cnt += 1
         print("vocab_dict_size =", len(word_to_id))
         print("embedded_dict_size =", len(embeddings))
         np.savez_compressed(train_embedded , embeddings=embeddings)

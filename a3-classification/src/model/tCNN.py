@@ -13,18 +13,19 @@ class Config(BaseConfig):
         self.model_name = 'tCNN'
 
         ''' override training params '''
+        self.dropout = 0.4
         self.num_epochs = 30
         self.batch_size = 64
         self.output_int = 30
         # sentence length
-        self.pad_size = 600
+        self.pad_size = 300
         self.learning_rate = 1e-3
 
         ''' model params '''
         # kernel sizes for the first layer
         self.filter_sizes = (2, 3, 4, 8)                 # 卷积核尺寸
         # kernel number for the first layer
-        self.num_filters = 512                # 卷积核数量(channels数)
+        self.num_filters = 100                # 卷积核数量(channels数)
 
 
 class Model(nn.Module):
