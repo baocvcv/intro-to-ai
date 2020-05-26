@@ -21,7 +21,8 @@ class BaseConfig(object):
             '/home/mengxy/bh/intro-to-ai/a3-classification/data/',
             dataset
         )
-        self.train_path = join(self.dataset_path, 'train.txt.boost')
+        #self.train_path = join(self.dataset_path, 'train.txt.boost')
+        self.train_path = join(self.dataset_path, 'train.txt')
         self.valid_path = join(self.dataset_path, 'valid.txt')
         self.test_path = join(self.dataset_path, 'sinanews.test')
         self.class_list = [x.strip() for x in open(
