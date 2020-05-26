@@ -91,7 +91,7 @@ def build_vocab(input_file_path, tokenizer, max_size, min_freq):
     return vocab_dic
 
 
-def build_dataset(config, use_word):
+def build_dataset(config, params, use_word):
     if use_word:
         tokenizer = lambda x: x.split(' ')  # word-based
     else:
@@ -133,9 +133,9 @@ def build_dataset(config, use_word):
                 contents.append((words_line, label, seq_len))
         return contents  # [([...], 0), ([...], 1), ...]
 
-    train = load_dataset(config.train_path, config.pad_size)
-    valid = load_dataset(config.valid_path, config.pad_size)
-    test = load_dataset(config.test_path, config.pad_size)
+    train = load_dataset(config.train_path, params['pad_size'])
+    valid = load_dataset(config.valid_path, params['pad_size'])
+    test = load_dataset(config.test_path, params['pad_size'])
     return vocab, train, valid, test
 
 

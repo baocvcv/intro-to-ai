@@ -1,5 +1,6 @@
 # coding=utf-8
 import time
+from importlib import import_module
 
 import numpy as np
 import torch
@@ -8,8 +9,11 @@ import torch.nn.functional as F
 from sklearn import metrics
 from tensorboardX import SummaryWriter
 
-from util import get_time_dif
+from util import get_time_dif, build_dataset, build_iterator
+from text_models.base_config import BaseConfig
 
+dataset = 'sina'
+embedding = 'sinanews_embedding_merge_all.npz'
 #TODO: grid search for parameters, train-validation
 
 # init weights, use xavier by default
@@ -29,12 +33,35 @@ def init_network(model, method='xavier', exclude='embedding', seed=123):
                 pass
 
 
-def train(config, model, train_iter, validation_iter, test_iter):
+def train(params):
+    config = BaseConfig(dataset, embedding)
+
+    np.random.seed(1)
+    torch.manual_seed(1)
+    torch.cuda.manual_seed_all(1)
+    torch.backends.cudnn.deterministic = True
+
+    # load training data
+    print("[Info] Start training " + params['model'] + " with " + config.dataset)
+    vocab_dict, d_train, d_valid, d_test = build_dataset(config, params, use_word=config.use_word)
+    train_iter = build_iterator(d_train, config)
+    valid_iter = build_iterator(d_valid, config)
+    test_iter = build_iterator(d_test, config)
+    config.n_vocab = len(vocab_dict)
+
+    # load model
+    module = import_module('text_models.' + params['model'])
+    model = module.Model(params, config).to(config.device)
+    init_network(model)
+    print("[Info] Model parameters: ")
+    print(model.parameters)
+
+    # start traning
     print("[Info] Using device ", config.device)
     start_time = time.time()
     model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate,
-                                 weight_decay=0.05)
+    optimizer = torch.optim.Adam(model.parameters(), lr=params['lr'],
+                                 weight_decay=params['weight_decay'])
 
     # decrease lr each epoch by a factor of gamma
     #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
@@ -57,7 +84,7 @@ def train(config, model, train_iter, validation_iter, test_iter):
                 true = labels.data.cpu()
                 predic = torch.max(outputs.data, 1)[1].cpu()
                 train_acc = metrics.accuracy_score(true, predic)
-                valdation_acc, valdation_loss = evaluate(config, model, validation_iter)
+                valdation_acc, valdation_loss = evaluate(config, model, valid_iter)
                 if valdation_loss < valdation_best_loss:
                     valdation_best_loss = valdation_loss
                     torch.save(model.state_dict(), config.save_path)
