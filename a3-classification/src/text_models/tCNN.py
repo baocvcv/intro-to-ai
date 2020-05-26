@@ -8,12 +8,12 @@ import numpy as np
 params = {
     'model': 'tCNN',
     'tuning': False,
-    'dropout': 0.5,
-    'pad_size': 500,
-    'lr': 1e-4,
-    'filter_sizes': (2, 3, 4),
-    'num_filters': 100,
-    'weight_decay': 0.01
+    'dropout': 0.43,
+    'pad_size': 334,
+    'lr': 4e-4,
+    'filter_sizes': (2, 4, 8),
+    'num_filters': 150,
+    'weight_decay': 3e-3
 }
 
 params_tune = {

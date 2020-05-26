@@ -34,10 +34,17 @@ def train_valid_split(input_file, saveTo, ratio=0.1):
     with open(join(saveTo, 'valid.txt'), 'w') as f:
         f.writelines(valid)
 
-def inspect_train(train_file):
+def parse_label(label_text):
+    label = label_text.split(' ')[1:]
+    label = [l.split(':') for l in label]
+    label = sorted(label, key=lambda x: int(x[1]), reverse=True)[0]
+    return label[0]
+
+def inspect_train(train_file, config=None):
     ''' inpect training file '''
     from collections import Counter
     label_cnt = Counter()
+    label_len = defaultdict(int)
     num_bins = 20
     bins = [0] * num_bins
     step = 50
@@ -46,30 +53,67 @@ def inspect_train(train_file):
             lin = line.strip()
             if not lin:
                 continue
-
             _, label, content = lin.split('\t')
-            label = label.split(' ')[1:]
-            label = [l.split(':') for l in label]
-            label = sorted(label, key=lambda x: x[1], reverse=True)[0]
-            label = label[0]
+            label = parse_label(label)
             label_cnt[label] += 1
 
             length = len(content.split(' '))
+            if config is None:
+                label_len[label] += max(1, int(length / 100))
+            else:
+                label_len[label] += max(1, int((length-100) / config[label]))
             if length > (step * (num_bins-1)):
                 bins[-1] += 1
             else:
                 bins[int(length / step)] += 1
+    # output label_cnts
     total_cnt = 0
+    total_len = 0
     for label in label_cnt:
         total_cnt += label_cnt[label]
+        total_len += label_len[label]
+    print('Label counts:')
     for label in label_cnt:
-        print(label, '=', '%4d' % label_cnt[label],
-              '%.3f' % (label_cnt[label]/total_cnt))
+        print(
+            label, '=',
+            '(%4d, %.3f)' % (label_cnt[label], label_cnt[label]/total_cnt),
+            '(%4d, %.3f)' % (label_len[label], label_len[label]/total_len),
+        )
     cnt_cumulative = 0
+    # output news length histogram
+    print('News length histogram:')
     for i, cnt in enumerate(bins):
         cnt_cumulative += cnt
         print('%3d' % (i*step), '=', '%5d' % cnt, '%.3f' % (cnt_cumulative/total_cnt))
     print("total_cnt =", total_cnt)
+
+
+def boost_dataset(input_file, output_file, config, pad_size):
+    lines = []
+    print('pad_size:', pad_size)
+    with open(input_file, 'r') as f:
+        for line in f:
+            lin = line.strip()
+            if not lin:
+                continue
+            head, label_ori, content = lin.split('\t')
+            label = parse_label(label_ori)
+            content = content.split(' ')
+            length = len(content)
+            if length < pad_size:
+                lines.append(line)
+            else:
+                config_len = config[label]
+                for i in range(int(length / config_len)):
+                    start = i * config_len
+                    finish = min(length, start + pad_size)
+                    sample = ' '.join(content[start : finish])
+                    new_line = '\t'.join([head, label_ori, sample])
+                    lines.append(new_line + '\n')
+    from random import shuffle
+    shuffle(lines)
+    with open(output_file, 'w') as f:
+        f.writelines(lines)
 
 
 def build_vocab(input_file_path, tokenizer, max_size, min_freq):
@@ -112,11 +156,7 @@ def build_dataset(config, params, use_word):
                 if not lin:
                     continue
                 _, label, content = lin.split('\t')
-                # parse label
-                label = label.split(' ')[1:]
-                label = [l.split(':') for l in label]
-                label = sorted(label, key=lambda x: int(x[1]), reverse=True)[0]
-                label = LABEL[label[0]]
+                label = parse_label(label)
                 # parse content
                 words_line = []
                 token = tokenizer(content)
@@ -207,7 +247,7 @@ parser.add_argument('--embedding', '-e', type=str,
 parser.add_argument('--output', '-o', type=str,
                     default="../data/sina/sinanews_embedding_merge_all", help='output file')
 parser.add_argument('--ratio', '-r', type=float, default=0.1, help='ratio of valid')
-parser.add_argument('cmd', type=str, choices=['split', 'check', 'build'])
+parser.add_argument('cmd', type=str, choices=['split', 'check', 'build', 'boost'])
 
 if __name__ == "__main__":
     ''' extract embedding '''
@@ -248,3 +288,12 @@ if __name__ == "__main__":
                           ratio=args.ratio)
     elif args.cmd == 'check':
         inspect_train(args.input)
+    elif args.cmd == 'boost':
+        from text_models.tCNN import params
+        config = {'感动':150, '同情':70, '无聊':50, '愤怒':400,
+                  '搞笑':100, '难过':80, '新奇':30, '温馨':15}
+        infile = args.input
+        output = infile + '.boost'
+        inspect_train(infile, config)
+        boost_dataset(infile, output, config, params['pad_size'])
+
