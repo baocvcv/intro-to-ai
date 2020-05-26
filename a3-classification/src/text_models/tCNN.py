@@ -7,6 +7,7 @@ import numpy as np
 
 params = {
     'model': 'tCNN',
+    'tuning': False,
     'dropout': 0.5,
     'pad_size': 500,
     'lr': 1e-4,
@@ -17,6 +18,7 @@ params = {
 
 params_tune = {
     'model': 'tCNN',
+    'tuning': True,
     'dropout': tune.sample_from(lambda spec: np.random.uniform(0.2, 0.8)),
     'pad_size': tune.sample_from(lambda spec: np.random.randint(16, 512)),
     'lr': tune.sample_from(lambda spec: 10**(-10 * np.random.rand())),

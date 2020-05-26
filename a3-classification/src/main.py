@@ -45,13 +45,15 @@ if __name__ == '__main__':
         #ray.init(local_mode=True)
         analysis = tune.run(
             train,
-            num_samples=30,
+            num_samples=50,
             scheduler=ASHAScheduler(metric='mean_accuracy', mode='max'),
+            stop={
+                'mean_accuracy': 0.9,
+                'training_iteration': 100
+            },
             config=params,
             fail_fast=True,
-            resources_per_trial={"gpu": 5}
+            resources_per_trial={"gpu": 6}
         )
-        # dfs = analysis.trial_dataframes
-
-
+        print('Best config is:', analysis.get_best_config(metrix='mean_accuracy'))
 

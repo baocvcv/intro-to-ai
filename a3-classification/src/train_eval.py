@@ -82,7 +82,6 @@ def train(params):
                 predic = torch.max(outputs.data, 1)[1].cpu()
                 train_acc = metrics.accuracy_score(true, predic)
                 validation_acc, valdation_loss = evaluate(config, model, valid_iter)
-                track.log(mean_accuracy=validation_acc)
                 if valdation_loss < valdation_best_loss:
                     valdation_best_loss = valdation_loss
                     torch.save(model.state_dict(), config.save_path)
@@ -104,8 +103,11 @@ def train(params):
                 print("No optimization for a long time, auto-stopping...")
                 flag = True
                 break
-        if flag:
+        if flag and not params['tuning']:
             break
+        # valid after each epoch
+        validation_acc, valdation_loss = evaluate(config, model, valid_iter)
+        track.log(mean_accuracy=validation_acc)
     writer.close()
     test(config, model, test_iter)
 

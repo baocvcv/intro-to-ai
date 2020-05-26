@@ -12,3 +12,4 @@ a3-classification/word_vectors
 log
 *.log
 *.pyc
+*.swp
