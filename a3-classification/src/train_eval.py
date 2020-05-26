@@ -40,7 +40,7 @@ def train(params):
 
     # load training data
     print("[Info] Start training " + params['model'] + " with " + config.dataset)
-    weights = calc_weight(config.train_path)
+    weights = torch.from_numpy(calc_weight(config.train_path)).float().to(config.device)
     vocab_dict, d_train, d_valid, d_test = build_dataset(config, params, use_word=config.use_word)
     train_iter = build_iterator(d_train, config)
     valid_iter = build_iterator(d_valid, config)
