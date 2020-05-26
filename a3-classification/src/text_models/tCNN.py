@@ -14,19 +14,19 @@ class Config(BaseConfig):
         self.model_name = 'tCNN'
 
         ''' override training params '''
-        self.dropout = 0.4
+        self.dropout = 0.6
         self.num_epochs = 100
         self.batch_size = 16
         self.output_int = 50
         # sentence length
-        self.pad_size = 500
-        self.learning_rate = 1e-4
+        self.pad_size = 400
+        self.learning_rate = 1e-3
 
         ''' model params '''
         # kernel sizes for the first layer
-        self.filter_sizes = (2, 3, 4)                 # 卷积核尺寸
+        self.filter_sizes = (2, 3, 4, 8, 16)                 # 卷积核尺寸
         # kernel number for the first layer
-        self.num_filters = 100                # 卷积核数量(channels数)
+        self.num_filters = 256 # 卷积核数量(channels数)
 
 
 class Model(nn.Module):
@@ -35,7 +35,7 @@ class Model(nn.Module):
     def __init__(self, config):
         super(Model, self).__init__()
         if config.embedding_pretrained is not None:
-            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
+            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=True)
         else:
             self.embedding = nn.Embedding(config.n_vocab, config.embed, padding_idx=config.n_vocab - 1)
         self.convs = nn.ModuleList(

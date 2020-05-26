@@ -34,10 +34,10 @@ def train(config, model, train_iter, validation_iter, test_iter):
     start_time = time.time()
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate,
-                                 weight_decay=0.1)
+                                 weight_decay=0.05)
 
     # decrease lr each epoch by a factor of gamma
-    # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     valdation_best_loss = float('inf')
     cur_batch = 0  # current batch
     last_significant_batch = 0  # the last batch with improvement
@@ -45,7 +45,7 @@ def train(config, model, train_iter, validation_iter, test_iter):
     writer = SummaryWriter(log_dir=config.log_path + '/' + time.strftime('%m-%d_%H.%M', time.localtime()))
     for epoch in range(config.num_epochs):
         print('Epoch [{}/{}]'.format(epoch + 1, config.num_epochs))
-        # scheduler.step() # 学习率衰减
+        #scheduler.step() # 学习率衰减
         for i, (trains, labels) in enumerate(train_iter):
             outputs = model(trains)
             model.zero_grad()
