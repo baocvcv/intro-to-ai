@@ -156,7 +156,7 @@ def build_dataset(config, params, use_word):
                 if not lin:
                     continue
                 _, label, content = lin.split('\t')
-                label = parse_label(label)
+                label = LABEL[parse_label(label)]
                 # parse content
                 words_line = []
                 token = tokenizer(content)
@@ -290,8 +290,8 @@ if __name__ == "__main__":
         inspect_train(args.input)
     elif args.cmd == 'boost':
         from text_models.tCNN import params
-        config = {'感动':150, '同情':70, '无聊':50, '愤怒':400,
-                  '搞笑':100, '难过':80, '新奇':30, '温馨':15}
+        config = {'感动':150, '同情':70, '无聊':50, '愤怒':500,
+                  '搞笑':100, '难过':80, '新奇':10, '温馨':10}
         infile = args.input
         output = infile + '.boost'
         inspect_train(infile, config)

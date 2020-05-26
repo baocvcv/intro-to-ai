@@ -9,7 +9,7 @@ params = {
     'model': 'tCNN',
     'tuning': False,
     'dropout': 0.43,
-    'pad_size': 334,
+    'pad_size': 350,
     'lr': 4e-4,
     'filter_sizes': (2, 4, 8),
     'num_filters': 150,
