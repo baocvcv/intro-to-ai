@@ -23,7 +23,7 @@ if __name__ == '__main__':
     dataset = 'sina'
     embedding = 'sinanews_embedding_merge_all.npz'
 
-    module = import_module('models.' + args.model)
+    module = import_module('text_models.' + args.model)
     config = module.Config(dataset, embedding)
 
     np.random.seed(1)
