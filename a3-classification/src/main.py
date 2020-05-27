@@ -14,8 +14,8 @@ from util import build_dataset, build_iterator, get_time_dif
 
 parser = argparse.ArgumentParser(description="Text Classification")
 parser.add_argument("--model", "-m", type=str, required=True,
-                    choices=['tCNN', 'tRNN'],
-                    help="choose a model from tCNN, tRNN")
+                    choices=['tCNN', 'tRNN', 'dpCNN', 'tRNN_att'],
+                    help="choose a model")
 parser.add_argument("cmd", type=str, default="test",
                     choices=['train', 'test', 'tune'],
                     help="train or test the model")
