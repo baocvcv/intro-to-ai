@@ -8,11 +8,10 @@ import numpy as np
 params = {
     'model': 'dpCNN',
     'tuning': False,
-    'dropout': 0.43,
-    'pad_size': 334,
-    'lr': 4e-4,
+    'pad_size': 512,
+    'lr': 1e-4,
     'weight_decay': 3e-3,
-    'num_filters': 250,
+    'num_filters': 300,
 }
 
 class Model(nn.Module):
@@ -44,9 +43,10 @@ class Model(nn.Module):
         x = self.padding1(x)  # [batch_size, 250, seq_len, 1]
         x = self.relu(x)
         x = self.conv(x)  # [batch_size, 250, seq_len-3+1, 1]
-        while x.size()[2] >= 2:
+        while x.size()[2] > 2:
             x = self._block(x)
-        x = x.squeeze()  # [batch_size, num_filters(250)]
+        x = x.squeeze(2)  # [batch_size, num_filters(250), 1]
+        x = x.squeeze(2)  # [batch_size, num_filters(250)]
         x = self.fc(x)
         return x
 
