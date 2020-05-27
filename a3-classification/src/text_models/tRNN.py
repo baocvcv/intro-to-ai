@@ -44,20 +44,3 @@ class Model(nn.Module):
         out, _ = self.lstm(out)
         out = self.fc(out[:, -1, :])  # hidden state
         return out
-
-    ''' Flexible length RNN '''
-    # def forward(self, x):
-    #     x, seq_len = x
-    #     out = self.embedding(x)
-    #     _, idx_sort = torch.sort(seq_len, dim=0, descending=True)  # 长度从长到短排序（index）
-    #     _, idx_unsort = torch.sort(idx_sort)  # 排序后，原序列的 index
-    #     out = torch.index_select(out, 0, idx_sort)
-    #     seq_len = list(seq_len[idx_sort])
-    #     out = nn.utils.rnn.pack_padded_sequence(out, seq_len, batch_first=True)
-    #     # [batche_size, seq_len, num_directions * hidden_size]
-    #     out, (hn, _) = self.lstm(out)
-    #     out = torch.cat((hn[2], hn[3]), -1)
-    #     # out, _ = nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
-    #     out = out.index_select(0, idx_unsort)
-    #     out = self.fc(out)
-    #     return out
