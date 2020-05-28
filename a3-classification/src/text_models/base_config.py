@@ -9,7 +9,6 @@ class BaseConfig(object):
 
     def __init__(self, dataset, embedding):
         ''' all the parameters '''
-        self.model_name = 'model'
 
         ''' paths and devices '''
         self.dataset = dataset
@@ -28,10 +27,6 @@ class BaseConfig(object):
         self.class_list = [x.strip() for x in open(
             join(self.dataset_path, 'classes.txt'), encoding='utf-8').readlines()]
         self.vocab_path = join(self.dataset_path, 'vocab_dict.pkl')
-        self.save_path = join(self.dataset_path,
-                              'saved_model/',
-                              self.model_name + '.ckpt')
-        self.log_path = join(self.dataset_path, 'log', self.model_name)
         self.embedding = embedding
         if embedding != 'random':
             self.embedding_pretrained = torch.tensor(
@@ -50,5 +45,11 @@ class BaseConfig(object):
             if self.embedding_pretrained is not None else 300
         self.use_word = True
         self.num_epochs = 200
-        self.batch_size = 8
-        self.output_int = 8
+        self.batch_size = 16
+        self.output_int = 32
+
+    def get_save_path(self, name):
+        return join(self.dataset_path, 'saved_model', name + '.ckpt')
+
+    def get_log_path(self, name):
+        return join(self.dataset_path, 'log', name + '.ckpt')
