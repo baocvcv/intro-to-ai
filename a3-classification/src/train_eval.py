@@ -55,7 +55,7 @@ def train(params):
     print("[Info] Model parameters: ")
     print(model.parameters)
 
-    # start traning
+    # start training
     print("[Info] Using device ", config.device)
     start_time = time.time()
     model.train()
@@ -68,6 +68,7 @@ def train(params):
     cur_batch = 0  # current batch
     last_significant_batch = 0  # the last batch with improvement
     flag = False  # true if there is no improvement over a long period
+    log = {'training_loss':[], 'validation_loss':[]}
     writer = SummaryWriter(log_dir=config.log_path + '/' + time.strftime('%m-%d_%H.%M', time.localtime()))
     for epoch in range(config.num_epochs):
         print('Epoch [{}/{}]'.format(epoch + 1, config.num_epochs))
@@ -94,6 +95,8 @@ def train(params):
                 time_dif = get_time_dif(start_time)
                 msg = 'Iter: {0:>6},  Train Loss: {1:>5.2},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.2},  Val Acc: {4:>6.2%},  Time: {5} {6}'
                 print(msg.format(cur_batch, loss.item(), train_acc, valdation_loss, validation_acc, time_dif, improve))
+                log['training_loss'].append(str(loss.item()))
+                log['validation_loss'].append(str(valdation_loss))
                 writer.add_scalar("loss/train", loss.item(), cur_batch)
                 writer.add_scalar("loss/valdation", valdation_loss, cur_batch)
                 writer.add_scalar("acc/train", train_acc, cur_batch)
@@ -112,7 +115,8 @@ def train(params):
             validation_acc, valdation_loss = evaluate(config, model, valid_iter)
             track.log(mean_accuracy=validation_acc)
     writer.close()
-    test(config, model, test_iter)
+    acc = test(config, model, test_iter)
+    return log, acc
 
 
 def test(config, model, test_iter):
@@ -130,6 +134,7 @@ def test(config, model, test_iter):
     print("Pearson correlation = %.5f" % pearson)
     time_dif = get_time_dif(start_time)
     print("Time usage:", time_dif)
+    return test_acc
 
 
 def evaluate(config, model, data_iter, test=False):
@@ -152,5 +157,5 @@ def evaluate(config, model, data_iter, test=False):
         report = metrics.classification_report(labels_all, predict_all, target_names=config.class_list, digits=4)
         confusion = metrics.confusion_matrix(labels_all, predict_all)
         pearson = pearsonr(labels_all, predict_all)
-        return acc, loss_total / len(data_iter), report, confusion, pearson
+        return acc, loss_total / len(data_iter), report, confusion, pearson[0]
     return acc, loss_total / len(data_iter)

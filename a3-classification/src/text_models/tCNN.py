@@ -17,14 +17,20 @@ params = {
 }
 
 params_tune = {
-    'model': 'tCNN',
-    'tuning': True,
-    'dropout': tune.sample_from(lambda spec: np.random.uniform(0.2, 0.8)),
-    'pad_size': tune.sample_from(lambda spec: np.random.randint(16, 512)),
-    'lr': tune.sample_from(lambda spec: 10**(-10 * np.random.rand())),
-    'weight_decay': tune.sample_from(lambda spec: np.random.uniform(.0, 0.01)),
-    'filter_sizes': tune.choice([(2, 3, 4), (2, 4, 8), (2, 3, 6, 12)]),
-    'num_filters': tune.choice([50, 100, 150, 200]),
+    #'model': 'tCNN',
+    #'tuning': True,
+    #'dropout': tune.sample_from(lambda spec: np.random.uniform(0.2, 0.8)),
+    #'pad_size': tune.sample_from(lambda spec: np.random.randint(16, 512)),
+    'lr': [1e-4, 4e-4],#tune.sample_from(lambda spec: 10**(-10 * np.random.rand())),
+    #'weight_decay': tune.sample_from(lambda spec: np.random.uniform(.0, 0.01)),
+    #'filter_sizes': tune.choice([(2, 3, 4), (2, 4, 8), (2, 3, 6, 12)]),
+    #'num_filters': tune.choice([50, 100, 150, 200]),
+    #'dropout': 0.43,
+    #'pad_size': 350,
+    #'lr': 4e-4,
+    #'weight_decay': 3e-3,
+    #'filter_sizes': (2, 4, 8),
+    #'num_filters': 150,
 }
 
 
