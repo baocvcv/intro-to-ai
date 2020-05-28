@@ -68,7 +68,9 @@ def train(params):
     cur_batch = 0  # current batch
     last_significant_batch = 0  # the last batch with improvement
     flag = False  # true if there is no improvement over a long period
-    writer = SummaryWriter(log_dir=config.log_path + '/' + time.strftime('%m-%d_%H.%M', time.localtime()))
+    writer = SummaryWriter(
+        log_dir=config.get_log_path(params['model']) + '/' + time.strftime('%m-%d_%H.%M', time.localtime())
+    )
     for epoch in range(config.num_epochs):
         print('Epoch [{}/{}]'.format(epoch + 1, config.num_epochs))
         # scheduler.step() # 学习率衰减
@@ -86,7 +88,7 @@ def train(params):
                 validation_acc, valdation_loss = evaluate(config, model, valid_iter)
                 if valdation_loss < valdation_best_loss:
                     valdation_best_loss = valdation_loss
-                    torch.save(model.state_dict(), config.save_path)
+                    torch.save(model.state_dict(), config.get_save_path(params['model']))
                     improve = '*'
                     last_significant_batch = cur_batch
                 else:
@@ -111,12 +113,12 @@ def train(params):
         validation_acc, valdation_loss = evaluate(config, model, valid_iter)
         track.log(mean_accuracy=validation_acc)
     writer.close()
-    test(config, model, test_iter)
+    test(config, model, config.get_save_path(params['model']), test_iter)
 
 
-def test(config, model, test_iter):
+def test(config, model, model_path, test_iter):
     # test
-    model.load_state_dict(torch.load(config.save_path))
+    model.load_state_dict(torch.load(model_path))
     model.eval()
     start_time = time.time()
     test_acc, test_loss, test_report, test_confusion, pearson = evaluate(config, model, test_iter, test=True)
