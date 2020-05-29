@@ -77,16 +77,16 @@ def inspect_train(train_file, config=None):
     print('Label counts:')
     for label in label_cnt:
         print(
-            label, '=',
-            '(%4d, %.3f)' % (label_cnt[label], label_cnt[label]/total_cnt),
-            '(%4d, %.3f)' % (label_len[label], label_len[label]/total_len),
+            label, '&',
+            '%4d& %.1f\\\\' % (label_cnt[label], 100 * label_cnt[label]/total_cnt),
+            #'(%4d, %.3f)' % (label_len[label], label_len[label]/total_len),
         )
     cnt_cumulative = 0
     # output news length histogram
     print('News length histogram:')
     for i, cnt in enumerate(bins):
         cnt_cumulative += cnt
-        print('%3d' % (i*step), '=', '%5d' % cnt, '%.3f' % (cnt_cumulative/total_cnt))
+        print('%3d' % (i*step), ',', '%5d' % cnt, ',%.3f' % (cnt_cumulative/total_cnt))
     print("total_cnt =", total_cnt)
 
 

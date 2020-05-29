@@ -15,7 +15,7 @@ from util import build_dataset, build_iterator, get_time_dif
 
 parser = argparse.ArgumentParser(description="Text Classification")
 parser.add_argument("--model", "-m", type=str, required=True,
-                    choices=['tCNN', 'tRNN', 'dpCNN', 'tRNN_att'],
+                    choices=['tCNN', 'tRNN', 'dpCNN', 'tRNN_att', 'mlp'],
                     help="choose a model")
 parser.add_argument("cmd", type=str, default="test",
                     choices=['train', 'test', 'tune', 'log'],
@@ -80,6 +80,7 @@ if __name__ == '__main__':
                 log, acc = train(params_new)
                 logs[name + '=' + str(val)] = log
                 acc_log[name].append((val, acc))
+        print('Model:', args.model)
         print('Param Test_Acc')
         for name in acc_log:
             print(name)

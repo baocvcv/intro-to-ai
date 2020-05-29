@@ -98,7 +98,7 @@ def train(params):
                 msg = 'Iter: {0:>6},  Train Loss: {1:>5.2},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.2},  Val Acc: {4:>6.2%},  Time: {5} {6}'
                 print(msg.format(cur_batch, loss.item(), train_acc, valdation_loss, validation_acc, time_dif, improve))
                 log['training_loss'].append(str(loss.item()))
-                log['validation_loss'].append(str(valdation_loss))
+                log['validation_loss'].append(str(valdation_loss.item()))
                 writer.add_scalar("loss/train", loss.item(), cur_batch)
                 writer.add_scalar("loss/valdation", valdation_loss, cur_batch)
                 writer.add_scalar("acc/train", train_acc, cur_batch)
