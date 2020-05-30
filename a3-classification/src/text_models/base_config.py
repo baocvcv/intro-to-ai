@@ -13,11 +13,11 @@ class BaseConfig(object):
         ''' paths and devices '''
         self.dataset = dataset
         self.dataset_path = join(
-            '/home/fred/External/Codes/intro-to-ai/a3-classification/data/',
+            '../data/',
             dataset
         )
         self.dataset_path = join(
-            '/home/mengxy/bh/intro-to-ai/a3-classification/data/',
+            '../data/',
             dataset
         )
         #self.train_path = join(self.dataset_path, 'train.txt.boost')
