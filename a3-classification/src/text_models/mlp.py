@@ -9,7 +9,7 @@ params = {
     'model': 'mlp',
     'tuning': False,
     'dropout': 0.5,
-    'pad_size': 50,
+    'pad_size': 64,
     'lr': 5e-4,
     'weight_decay': 3e-3,
     'hidden_layer': 100,
