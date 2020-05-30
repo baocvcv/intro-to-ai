@@ -27,7 +27,7 @@ def init_network(model, method='xavier', exclude='embedding', seed=123):
                 if method == 'xavier':
                     nn.init.xavier_normal_(w)
                 elif method == 'kaiming':
-                    nn.init.kaiming_normal_(w)
+                    nn.init.kaiming_uniform_(w)
                 else:
                     nn.init.normal_(w)
             elif 'bias' in name:

@@ -35,12 +35,13 @@ if __name__ == '__main__':
     elif args.cmd == 'test':
         params = module.params
         from text_models.base_config import BaseConfig
-        config = BaseConfig
-        vocab_dict, _, _, d_test = build_dataset(config, use_word=config.use_word)
+        from train_eval import dataset, embedding
+        config = BaseConfig(dataset, embedding)
+        vocab_dict, _, _, d_test = build_dataset(config, params, config.use_word)
         test_iter = build_iterator(d_test, config)
         config.n_vocab = len(vocab_dict)
         model = module.Model(params, config).to(config.device)
-        test(config, model, test_iter)
+        test(config, model, config.get_save_path(params['model']), test_iter)
     elif args.cmd == 'tune':
         params = module.params_tune
         analysis = tune.run(
@@ -58,13 +59,6 @@ if __name__ == '__main__':
         print('Best config is:', analysis.get_best_config(metric='mean_accuracy'))
         df = analysis.trial_dataframes
         df.to_csv(r'/home/mengxy/bh/intro-to-ai/a3-classification/tune/'+args.model+'.csv')
-        '''
-        print(df)
-        ax = None
-        for d in df.values():
-            ax = d.mean_accuracy.plot(ax=ax, legend=False)
-        ax.savefig('/home/mengxy/bh/intro-to-ai/result.png')
-        '''
     elif args.cmd == 'log':
         from copy import copy
         from collections import defaultdict
