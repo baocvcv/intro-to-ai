@@ -197,7 +197,7 @@ def calc_weight(input_file):
             if not lin:
                 continue
             _, label, _ = lin.split('\t')
-            label = parse_label(label)
+            label, _ = parse_label(label)
             label_cnt[label] += 1
     num_samples = [.0] * len(LABEL)
     for label in LABEL:
