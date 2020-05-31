@@ -39,8 +39,14 @@ def train_valid_split(input_file, saveTo, ratio=0.1):
 def parse_label(label_text):
     label = label_text.split(' ')[1:]
     label = [l.split(':') for l in label]
-    label = sorted(label, key=lambda x: int(x[1]), reverse=True)[0]
-    return label[0]
+    total = 0
+    for l in label:
+        l[1] = int(l[1])
+        total += l[1]
+    label_dist = [l[1]/total for l in label]
+    label = sorted(label, key=lambda x: x[1], reverse=True)[0]
+    #label = sorted(label, key=lambda x: int(x[1]), reverse=True)[0]
+    return label[0], label_dist
 
 def inspect_train(train_file, config=None):
     ''' inpect training file '''
@@ -56,7 +62,7 @@ def inspect_train(train_file, config=None):
             if not lin:
                 continue
             _, label, content = lin.split('\t')
-            label = parse_label(label)
+            label, _ = parse_label(label)
             label_cnt[label] += 1
 
             length = len(content.split(' '))
@@ -99,7 +105,7 @@ def boost_dataset(input_file, output_file, config, pad_size):
             if not lin:
                 continue
             head, label_ori, content = lin.split('\t')
-            label = parse_label(label_ori)
+            label, _ = parse_label(label_ori)
             content = content.split(' ')
             length = len(content)
             if length < pad_size:
@@ -158,7 +164,8 @@ def build_dataset(config, params, use_word):
                 if not lin:
                     continue
                 _, label, content = lin.split('\t')
-                label = LABEL[parse_label(label)]
+                label, label_dist = parse_label(label)
+                label = LABEL[label]
                 # parse content
                 words_line = []
                 token = tokenizer(content)
@@ -172,7 +179,7 @@ def build_dataset(config, params, use_word):
                 # word to id
                 for word in token:
                     words_line.append(vocab.get(word, unk))
-                contents.append((words_line, label, seq_len))
+                contents.append((words_line, label, seq_len, label_dist))
         return contents  # [([...], 0), ([...], 1), ...]
 
     train = load_dataset(config.train_path, params['pad_size'])
@@ -219,7 +226,8 @@ class DatasetIterater(object):
 
         # pad前的长度(超过pad_size的设为pad_size)
         seq_len = torch.LongTensor([_[2] for _ in datas]).to(self.device)
-        return (x, seq_len), y
+        label_dist = torch.FloatTensor([_[3] for _ in datas]).to(self.device)
+        return (x, seq_len), y, label_dist
 
     def __next__(self):
         if self.residue and self.index == self.n_batches:
